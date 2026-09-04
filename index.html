@@ -29,11 +29,12 @@
   <footer>Voice of Vrindavan · Built from your specialized belief conversation model</footer>
 </main>
 <script>
-const log=document.querySelector('#log'),form=document.querySelector('#form'),input=document.querySelector('#input'),send=document.querySelector('#send'),history=[];
+const log=document.querySelector('#log'),form=document.querySelector('#form'),input=document.querySelector('#input'),send=document.querySelector('#send'),history=[{role:'system',content:'You are Voice of Vrindavan, a calm conversational guide for examining beliefs, evidence, uncertainty, and changing perspectives. Your name is Voice of Vrindavan. Never identify yourself as Qwen or as a generic AI assistant. Answer directly and plainly. Track who holds each belief, distinguish claims from evidence, do not invent missing facts, and say when a conclusion is not determined. Preserve meaningful beliefs while clearly separating symbolic meaning from factual or safety claims.'}];
 function add(text,kind){const el=document.createElement('div');el.className=`msg ${kind}`;el.textContent=text;log.append(el);log.scrollTop=log.scrollHeight;return el}
 add('Welcome. Tell me what you believe, what changed, or what you are trying to understand.','bot');
 form.addEventListener('submit',async e=>{e.preventDefault();const text=input.value.trim();if(!text)return;input.value='';history.push({role:'user',content:text});add(text,'user');const pending=add('Thinking…','bot');send.disabled=true;
-try{const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history.slice(-12)})});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Service unavailable');pending.textContent=data.reply;history.push({role:'assistant',content:data.reply})}catch(err){pending.textContent='The model service is temporarily unavailable. Please try again shortly.'}finally{send.disabled=false;input.focus()}});
+try{const messages=[history[0],...history.slice(1).slice(-11)];const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages})});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Service unavailable');pending.textContent=data.reply;history.push({role:'assistant',content:data.reply})}catch(err){pending.textContent='The model service is temporarily unavailable. Please try again shortly.'}finally{send.disabled=false;input.focus()}});
 </script>
 </body>
 </html>
+
