@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Voice of Vrindavan — a conversational guide trained to reason carefully about beliefs, evidence, and changing perspectives.">
+  <title>Voice of Vrindavan</title>
+  <style>
+    :root{color-scheme:dark;--ink:#f8f2df;--muted:#c7bea9;--gold:#f4bd62;--violet:#7868c9;--panel:#181424;--line:#393148}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -20%,#4b3463 0,#21182c 35%,#0d0b12 72%);color:var(--ink);font:16px/1.5 system-ui,sans-serif}
+    main{width:min(860px,calc(100% - 28px));margin:auto;padding:46px 0 28px}header{text-align:center;margin-bottom:26px}
+    .mark{display:inline-grid;place-items:center;width:58px;height:58px;border:1px solid #8b744e;border-radius:50%;color:var(--gold);font:28px Georgia,serif;background:#181220}
+    h1{font:clamp(38px,8vw,68px)/1.05 Georgia,serif;margin:14px 0 8px}.tag{max-width:640px;margin:auto;color:var(--muted)}
+    .chat{border:1px solid var(--line);border-radius:24px;background:rgba(19,16,28,.94);box-shadow:0 24px 80px #0008;overflow:hidden}
+    #log{height:min(58vh,570px);min-height:380px;overflow:auto;padding:22px;scroll-behavior:smooth}.msg{max-width:82%;padding:12px 15px;margin:10px 0;border-radius:16px;white-space:pre-wrap}
+    .bot{background:#272033;border:1px solid #413752}.user{margin-left:auto;background:linear-gradient(135deg,#6856bd,#8772d7);color:white}.status{color:var(--muted);font-size:13px;text-align:center;padding:0 12px 10px}
+    form{display:flex;gap:10px;padding:14px;border-top:1px solid var(--line);background:#110e18}input{flex:1;min-width:0;padding:14px 16px;border:1px solid #4b405b;border-radius:14px;background:#201a2b;color:white;font:inherit;outline:none}input:focus{border-color:var(--gold)}
+    button{padding:0 22px;border:0;border-radius:14px;background:var(--gold);color:#241708;font-weight:800;cursor:pointer}button:disabled{opacity:.55;cursor:wait}footer{text-align:center;color:#8e8599;font-size:12px;margin-top:16px}
+    @media(max-width:560px){main{padding-top:24px}.msg{max-width:92%}button{padding:0 16px}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div class="mark" aria-hidden="true">ॐ</div><h1>Voice of Vrindavan</h1><p class="tag">A conversational guide for examining beliefs, evidence, and changing perspectives with care.</p></header>
+  <section class="chat" aria-label="Chat with Voice of Vrindavan">
+    <div id="log" aria-live="polite"></div><div class="status" id="status">Private conversation · AI responses may be mistaken</div>
+    <form id="form"><input id="input" maxlength="4000" autocomplete="off" placeholder="Share a question or belief…" aria-label="Message" required><button id="send">Send</button></form>
+  </section>
+  <footer>Voice of Vrindavan · Built from your specialized belief conversation model</footer>
+</main>
+<script>
+const log=document.querySelector('#log'),form=document.querySelector('#form'),input=document.querySelector('#input'),send=document.querySelector('#send'),history=[];
+function add(text,kind){const el=document.createElement('div');el.className=`msg ${kind}`;el.textContent=text;log.append(el);log.scrollTop=log.scrollHeight;return el}
+add('Welcome. Tell me what you believe, what changed, or what you are trying to understand.','bot');
+form.addEventListener('submit',async e=>{e.preventDefault();const text=input.value.trim();if(!text)return;input.value='';history.push({role:'user',content:text});add(text,'user');const pending=add('Thinking…','bot');send.disabled=true;
+try{const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history.slice(-12)})});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Service unavailable');pending.textContent=data.reply;history.push({role:'assistant',content:data.reply})}catch(err){pending.textContent='The model service is temporarily unavailable. Please try again shortly.'}finally{send.disabled=false;input.focus()}});
+</script>
+</body>
+</html>
