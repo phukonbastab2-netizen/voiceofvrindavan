@@ -10,7 +10,7 @@ const logo=new T.Group();scene.add(logo);
 // Environment light cards give the metal broad, photographic reflections.
 const studio=new T.Scene();studio.background=new T.Color('#807d70');
 for(const [x,y,z,w,h,power] of [[-3,3,10,8,8,1.8],[-8,8,7,8,14,4],[9,2,5,4,13,3],[0,-8,3,18,2,2],[0,10,-4,16,5,4]]){const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:new T.Color(power,power*.97,power*.9),side:T.DoubleSide}));m.position.set(x,y,z);m.lookAt(0,0,0);studio.add(m)}
-const pm=new T.PMREMGenerator(renderer);scene.environment=pm.fromScene(studio,.08).texture;pm.dispose();
+const pm=new T.PMREMGenerator(renderer);scene.environment=pm.fromScene(studio,.035).texture;pm.dispose();
 scene.add(new T.AmbientLight(0xfff0d2,1));const key=new T.DirectionalLight(0xfff4df,3.2);key.position.set(-3,4,8);scene.add(key);const rim=new T.DirectionalLight(0xffffff,2.4);rim.position.set(6,-2,3);scene.add(rim);
 const gold=new T.MeshStandardMaterial({color:0xe2b24f,metalness:.82,roughness:.22,envMapIntensity:1.35});const side=new T.MeshStandardMaterial({color:0xb88638,metalness:.8,roughness:.25,envMapIntensity:1.45});
 function path(points,Type){return new Type(points.map(([x,y])=>new T.Vector2((x-908)/100,(446-y)/100)))}
