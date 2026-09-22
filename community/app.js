@@ -5,6 +5,17 @@
   const TOPICS = { truth: 'Truth', consciousness: 'Consciousness', meaning: 'Meaning of life', 'free-will': 'Free will', ethics: 'Ethics', spirituality: 'Spirituality' };
   const STYLES = { explore: 'Explore together', debate: 'Thoughtful debate', listen: 'Listen & reflect' };
   const API = '/api/community/';
+  let audioContext;
+  let soundEnabled = true;
+  try { soundEnabled = localStorage.getItem('vov-sound') !== 'off'; } catch {}
+  function tone(match = false) {
+    if (!soundEnabled || !audioContext) return;
+    try { const now = audioContext.currentTime; [0, ...(match ? [.16,.32] : [])].forEach((delay,i) => {const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type='sine';osc.frequency.value=[528,660,792][i];gain.gain.setValueAtTime(0,now+delay);gain.gain.linearRampToValueAtTime(.045,now+delay+.015);gain.gain.exponentialRampToValueAtTime(.001,now+delay+.3);osc.connect(gain).connect(audioContext.destination);osc.start(now+delay);osc.stop(now+delay+.32);}); } catch {}
+  }
+  document.addEventListener('pointerdown', () => { try { audioContext ||= new (window.AudioContext || window.webkitAudioContext)(); audioContext.resume(); } catch {} }, {once:true});
+  function soundLabel(){ $('sound-toggle').textContent = soundEnabled ? 'Sound on' : 'Sound off'; $('sound-toggle').setAttribute('aria-pressed',String(soundEnabled)); }
+  $('sound-toggle').addEventListener('click',()=>{soundEnabled=!soundEnabled;try { localStorage.setItem('vov-sound',soundEnabled?'on':'off'); } catch {}soundLabel();tone();});soundLabel();
+  let autoJoin = false;
   let user = null;
   let currentRoom = null;
   let state = 'idle';
@@ -143,6 +154,7 @@
     $('boot').hidden = true; $('auth-view').hidden = true; $('workspace').hidden = false; $('account-nav').hidden = false;
     document.querySelector('.header-back').hidden = true;
     notice(''); renderUser(); renderIdle();
+    autoJoin = true;
     syncState();
   }
   function signedOut(message = '') {
@@ -164,7 +176,7 @@
   }
   $('recovery-dialog').addEventListener('cancel', (event) => event.preventDefault());
   $('saved-recovery').addEventListener('change', () => { $('recovery-done').disabled = !$('saved-recovery').checked; });
-  $('recovery-done').addEventListener('click', () => { if (!$('saved-recovery').checked) return; closeDialog('recovery-dialog'); savedRecovery = ''; $('recovery-value').value = ''; });
+  $('recovery-done').addEventListener('click', () => { if (!$('saved-recovery').checked) return; closeDialog('recovery-dialog'); savedRecovery = ''; $('recovery-value').value = ''; syncState(); });
   $('download-recovery').addEventListener('click', () => download('voice-of-vrindavan-recovery.txt', `Voice of Vrindavan account recovery\nUsername: ${recoveryUsername}\nRecovery code: ${savedRecovery}\n\nKeep this private. Anyone with it can reset your password.\n`, 'text/plain'));
 
   $('register-form').addEventListener('submit', (event) => {
@@ -264,8 +276,7 @@
     $('empty-room').hidden = false; $('chat-room').hidden = true;
     $('empty-room').classList.remove('is-waiting'); $('room-status').textContent = 'READY WHEN YOU ARE';
     $('empty-eyebrow').textContent = 'A SHARED INTEREST. A NEW PERSPECTIVE.';
-    const title = $('empty-title'); title.replaceChildren(document.createTextNode('Who will you'), document.createElement('br'));
-    const em = document.createElement('em'); em.textContent = 'think with today?'; title.append(em);
+    $('empty-title').textContent = 'Start a conversation';
     $('empty-copy').textContent = 'We’ll start with shared interests and the same language. After a minute, we may introduce someone exploring a different philosophy topic.';
     $('connect').hidden = false; $('cancel-wait').hidden = true; $('wait-details').hidden = true;
   }
@@ -274,13 +285,14 @@
     state = 'waiting'; currentRoom = null;
     $('empty-room').hidden = false; $('chat-room').hidden = true; $('empty-room').classList.add('is-waiting');
     $('room-status').textContent = 'IN THE WAITING ROOM'; $('empty-eyebrow').textContent = 'GOOD CONVERSATIONS ARE WORTH A MOMENT';
-    $('empty-title').textContent = 'Finding a curious mind…';
+    $('empty-title').textContent = 'Finding your match…';
     $('empty-copy').textContent = Date.now() - waitingSince > 60000 ? 'Still waiting for someone available. We’re also looking across other philosophy topics in your language. You can leave the queue at any time.' : Date.now() - waitingSince > 25000 ? 'Nobody suitable is available yet. After a minute, we’ll also look across other philosophy topics in your language.' : 'You’re in the queue. We’re looking for an available person who shares your language and interests.';
     $('connect').hidden = true; $('cancel-wait').hidden = false; $('wait-details').hidden = false;
   }
   function showRoom(room) {
     if (!room) return;
     if (!currentRoom || currentRoom.id !== room.id) {
+      if (room.status !== 'ended') tone(true);
       currentRoom = room; afterId = 0; seenMessages = new Set();
       $('message-list').replaceChildren(noMessagesNode()); $('feedback-status').textContent = ''; $('feedback-buttons').hidden = false;
       $('feedback-buttons').querySelectorAll('button').forEach((button) => { button.disabled = false; });
@@ -313,7 +325,7 @@
       meta.textContent = `${own ? 'You' : currentRoom?.partner?.displayName || 'Partner'}${time ? ' · ' + time : ''}`;
       row.append(content, meta);
       const next = Array.from(list.children).find((child) => Number(child.dataset.messageId) > Number(message.id));
-      list.insertBefore(row, next || null); added = true; ownAdded ||= own;
+      list.insertBefore(row, next || null); if (!own) tone(); added = true; ownAdded ||= own;
     }
     if (added && (atBottom || ownAdded)) list.scrollTop = list.scrollHeight;
   }
@@ -342,6 +354,7 @@
       const result = await request('state?after=' + encodeURIComponent(afterId));
       if (version !== generation || !user) return;
       applyState(result);
+      if (autoJoin && !$('recovery-dialog').open) { autoJoin = false; if (result.state === 'idle' || result.state === 'ended') { await connect($('connect')); } }
       if ($('global-notice').dataset.connectionError === 'true') { notice(''); delete $('global-notice').dataset.connectionError; }
     } catch (error) {
       if (version !== generation) return;
