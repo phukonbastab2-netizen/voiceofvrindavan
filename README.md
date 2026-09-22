@@ -29,3 +29,7 @@ The development load exercise used 100 connected clients, 50 rooms, and 1,000 sa
 
 Run the local load exercise with the same tool/bundle environment variables using node backend/live.load-test.cjs. It holds 100 simulated connections and sends 1,000 messages; it never targets a cloud account.
 
+
+## Primary domain
+
+The public website is https://voiceofvrindavan.com/. Both .in hostnames and www.voiceofvrindavan.com redirect to the corresponding path on the .com apex, preserving query strings. All hostnames use the same Pages project, D1 database and live-room namespaces. Users sign in again on .com with their existing credentials because session cookies are host-specific. The old authenticated dataset endpoint remains compatible with the existing private Google Apps Script while new script installations use .com. The legacy APK download subdomain is independent.

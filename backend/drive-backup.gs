@@ -1,5 +1,5 @@
 /** Private Google Apps Script. Uses only files created by this script. */
-const API = 'https://voiceofvrindavan.in/api/community/admin/dataset';
+const API = 'https://voiceofvrindavan.com/api/community/admin/dataset';
 
 function setupBackup() {
   const props = PropertiesService.getScriptProperties();
