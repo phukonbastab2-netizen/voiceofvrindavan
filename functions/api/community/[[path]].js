@@ -1,16 +1,8 @@
 import { liveRequest, liveEnabled } from '../../../backend/live-api.js';
 import { runMaintenance as maintenance } from '../../../backend/maintenance.js';
-import { PHILOSOPHER_LABELS, MAX_PHILOSOPHERS } from '../../../community/philosophers.js';
+import { PHILOSOPHER_LABELS } from '../../../community/philosophers.js';
 
 const TOPICS = ['truth', 'consciousness', 'free-will', 'ethics', 'spirituality', 'meaning'];
-const PROMPTS = {
-  truth: 'Can something be true even if nobody can prove it?',
-  consciousness: 'What makes your experience of being you unique?',
-  'free-will': 'How free are we to choose who we become?',
-  ethics: 'Can a good intention justify a harmful outcome?',
-  spirituality: 'What does a spiritual life mean to you?',
-  meaning: 'Do we discover meaning, or create it?'
-};
 const KEYWORDS = {
   truth: /\b(truth|true|knowledge|evidence|belief|reality)\b/iu,
   consciousness: /\b(consciousness|conscious|awareness|mind|perception|experience)\b/iu,
@@ -81,13 +73,15 @@ function profileInput(data, existing = null, allowEmptyInterests = false) {
   const displayName = String(value('displayName', 'display_name') || '').trim();
   if (displayName.length < 2 || displayName.length > 48 || /[\p{Cc}\p{Cf}<>]/u.test(displayName)) fail(400, 'invalid_name', 'Choose a display name of 2–48 characters.');
   const originalInterests = data.interests ?? (existing && parse(existing.interests, []));
-  if (!Array.isArray(originalInterests) || originalInterests.length < (allowEmptyInterests ? 0 : 1) || originalInterests.length > 6 + MAX_PHILOSOPHERS || originalInterests.some(v => typeof v !== 'string' || (!TOPICS.includes(v) && !Object.hasOwn(PHILOSOPHER_LABELS, v)))) fail(400, 'invalid_interests', 'Choose listed topics or favourite philosophers.');
+  // Preserve legacy settings on privacy-only edits; matching requires a fresh single choice.
+  if (!Array.isArray(originalInterests) || (data.interests !== undefined &&
+    (originalInterests.length < (allowEmptyInterests ? 0 : 1) || originalInterests.length > 1 ||
+    originalInterests.some(v => typeof v !== 'string' || !Object.hasOwn(PHILOSOPHER_LABELS, v)))))
+    fail(400, 'invalid_interests', 'Choose one philosopher or spiritual teacher.');
   const interests = [...new Set(originalInterests)];
-  if (interests.filter(v => Object.hasOwn(PHILOSOPHER_LABELS, v)).length > MAX_PHILOSOPHERS) fail(400, 'invalid_interests', 'Choose up to ten favourite philosophers.');
   const language = String(value('language', 'language') || '').trim();
-  if (language.length < 2 || language.length > 32 || !/^[\p{L}\p{M} ()-]+$/u.test(language)) fail(400, 'invalid_language', 'Choose a language.');
-  const style = value('style', 'style');
-  if (!['explore', 'debate', 'listen'].includes(style)) fail(400, 'invalid_style', 'Choose a conversation style.');
+  if ((data.language !== undefined || !existing) && !['English', 'Hindi'].includes(language)) fail(400, 'invalid_language', 'Choose English or Hindi.');
+  const style = 'explore';
   const consent = (key, column) => {
     if (data[key] === undefined) return existing ? existing[column] : 0;
     if (typeof data[key] !== 'boolean') fail(400, 'invalid_consent', 'Consent choices must be true or false.');
@@ -165,17 +159,17 @@ async function expireOwnRoom(db, userId, now) {
     AND (created_at<? OR EXISTS(SELECT 1 FROM active_members m WHERE m.room_id=rooms.id AND m.heartbeat_at<?))`,
   now, userId, now - 2 * 3600000, now - QUEUE_LIFE).run();
 }
+function matchingChoice(user) {
+  const choices = parse(user.interests, []);
+  return choices.length === 1 && Object.hasOwn(PHILOSOPHER_LABELS, choices[0]) && ['English', 'Hindi'].includes(user.language) ? choices[0] : null;
+}
 function scoreCandidate(me, other, wait, now) {
-  const ownTopics = parse(me.interests, []); const theirTopics = parse(other.interests, []);
-  const common = ownTopics.filter(topic => theirTopics.includes(topic));
-  const myLearned = me.learning_consent ? parse(me.learned_interests, {}) : {};
-  const theirLearned = other.learning_consent ? parse(other.learned_interests, {}) : {};
-  const learnedScore = TOPICS.reduce((sum, topic) => sum + ((myLearned[topic] || 0) > 1 && theirTopics.includes(topic) ? 2 : 0)
-    + ((theirLearned[topic] || 0) > 1 && ownTopics.includes(topic) ? 2 : 0), 0);
-  return { topics: common, score: common.length * 10 + (me.style === other.style ? 5 : 0) + learnedScore
-    + Math.min(20, (now - wait) / 15000) - (other.poor_feedback ? 30 : 0) };
+  const choice = matchingChoice(me);
+  const common = choice && choice === matchingChoice(other) && me.language === other.language ? [choice] : [];
+  return { topics: common, score: Math.min(20, (now - wait) / 15000) - (other.poor_feedback ? 30 : 0) };
 }
 async function tryMatch(db, user, now) {
+  if (!matchingChoice(user)) return null;
   const ownQueue = await stmt(db, 'SELECT * FROM queue WHERE user_id=?', user.id).first();
   if (!ownQueue) return null;
   const candidates = rows(await stmt(db, `SELECT u.*,q.joined_at,
@@ -183,28 +177,32 @@ async function tryMatch(db, user, now) {
       AND ((past.user_a=? AND past.user_b=u.id) OR (past.user_b=? AND past.user_a=u.id))) AS poor_feedback
     FROM queue q JOIN users u ON u.id=q.user_id WHERE q.user_id<>? AND q.heartbeat_at>?
     AND lower(u.language)=lower(?) AND u.suspended=0
+    AND json_array_length(u.interests)=1 AND json_extract(u.interests,'$[0]')=?
     AND NOT EXISTS(SELECT 1 FROM active_members m WHERE m.user_id=u.id)
     AND NOT EXISTS(SELECT 1 FROM blocks b WHERE (b.blocker_id=? AND b.blocked_id=u.id) OR (b.blocked_id=? AND b.blocker_id=u.id))
     AND NOT EXISTS(SELECT 1 FROM rooms recent WHERE recent.created_at>? AND
       ((recent.user_a=? AND recent.user_b=u.id) OR (recent.user_b=? AND recent.user_a=u.id)))
-    ORDER BY q.joined_at LIMIT 100`, user.id, user.id, user.id, user.id, now - QUEUE_LIFE, user.language,
+    ORDER BY q.joined_at LIMIT 100`, user.id, user.id, user.id, user.id, now - QUEUE_LIFE, user.language, matchingChoice(user),
   user.id, user.id, now - 600000, user.id, user.id).all());
   const ranked = candidates.map(other => ({ other, ...scoreCandidate(user, other, other.joined_at, now) }))
-    .filter(item => item.topics.length || (now - ownQueue.joined_at > 60000 && now - item.other.joined_at > 60000))
+    .filter(item => item.topics.length === 1)
     .sort((a, b) => b.score - a.score);
   for (const candidate of ranked.slice(0, 3)) {
     const id = crypto.randomUUID();
     const topics = candidate.topics.length ? candidate.topics : [...new Set([...parse(user.interests, []), ...parse(candidate.other.interests, [])])].slice(0, 3);
-    const prompt = PROMPTS[topics[0]] || PROMPTS.truth;
+    const prompt = topics[0] === 'philosopher:others' ? 'Which teacher would you like to discuss?' : `What interests you about ${PHILOSOPHER_LABELS[topics[0]]}?`;
     // Every eligibility guard is rechecked inside the atomic INSERT, not trusted from the earlier read.
     await stmt(db, `INSERT INTO rooms(id,user_a,user_b,topics,prompt,language,dataset_a,dataset_b,training_a,training_b,created_at,last_activity)
       SELECT ?,a.id,b.id,?,?,a.language,a.dataset_consent,b.dataset_consent,a.training_consent,b.training_consent,?,?
       FROM users a JOIN users b ON b.id=? WHERE a.id=? AND a.suspended=0 AND b.suspended=0 AND lower(a.language)=lower(b.language)
+      AND json_array_length(a.interests)=1 AND json_array_length(b.interests)=1
+      AND json_extract(a.interests,'$[0]')=json_extract(b.interests,'$[0]')
+      AND a.language IN ('English','Hindi') AND json_extract(a.interests,'$[0]')=?
       AND EXISTS(SELECT 1 FROM queue q WHERE q.user_id=a.id AND q.heartbeat_at>?)
       AND EXISTS(SELECT 1 FROM queue q WHERE q.user_id=b.id AND q.heartbeat_at>?)
       AND NOT EXISTS(SELECT 1 FROM active_members m WHERE m.user_id IN(a.id,b.id))
       AND NOT EXISTS(SELECT 1 FROM blocks bl WHERE (bl.blocker_id=a.id AND bl.blocked_id=b.id) OR (bl.blocker_id=b.id AND bl.blocked_id=a.id))`,
-    id, JSON.stringify(topics), prompt, now, now, candidate.other.id, user.id, now - QUEUE_LIFE, now - QUEUE_LIFE).run();
+    id, JSON.stringify(topics), prompt, now, now, candidate.other.id, user.id, matchingChoice(user), now - QUEUE_LIFE, now - QUEUE_LIFE).run();
     const room = await stmt(db, 'SELECT r.* FROM rooms r JOIN active_members m ON r.id=m.room_id WHERE m.user_id=?', user.id).first();
     if (room) return room;
   }
@@ -403,7 +401,7 @@ async function coreRequest(context) {
       return json({ user: safeUser(await stmt(db, 'SELECT * FROM users WHERE id=?', user.id).first()) });
     }
     if (path === 'connect' && request.method === 'POST') {
-      if (!parse(user.interests, []).length) fail(400, 'interests_required', 'Choose a topic or interest in the room before finding a match.');
+      if (!matchingChoice(user)) fail(400, 'interests_required', 'Choose one philosopher or spiritual teacher and English or Hindi before finding a match.');
       await rate(db, `connect:${user.id}`, 12, 60000, now);
       await maintenance(db, now);
       const active = await stmt(db, 'SELECT room_id FROM active_members WHERE user_id=?', user.id).first();

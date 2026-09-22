@@ -39,7 +39,7 @@ function fixture() {
   }
   async function register(username, overrides = {}) {
     const response = await call('register', { method: 'POST', ip: `192.0.2.${username.length}`, data: { username, password, displayName: username,
-      interests: ['truth'], language: 'English', style: 'explore', learningConsent: false, datasetConsent: false, trainingConsent: false, adult: true, ...overrides } });
+      interests: ['philosopher:krishna'], language: 'English', style: 'explore', learningConsent: false, datasetConsent: false, trainingConsent: false, adult: true, ...overrides } });
     assert.equal(response.status, 201, JSON.stringify(response.data));
     return response;
   }
@@ -80,18 +80,18 @@ test('minimal registration defers interests until the room and keeps optional co
   for (const key of ['learningConsent', 'datasetConsent', 'trainingConsent']) assert.equal(a.data.user[key], false);
   assert.equal((await f.call('login', { method: 'POST', data: { username: ' NEW  PERSON ', password } })).status, 200);
   assert.equal((await f.call('connect', { method: 'POST', cookie: a.cookie, data: {} })).status, 400);
-  const profile = await f.call('profile', { method: 'POST', cookie: a.cookie, data: { interests: ['truth'], language: 'English', style: 'explore' } });
+  const profile = await f.call('profile', { method: 'POST', cookie: a.cookie, data: { interests: ['philosopher:krishna'], language: 'English', style: 'explore' } });
   assert.equal(profile.status, 200, JSON.stringify(profile.data));
   assert.equal(profile.data.user.datasetConsent, false);
   const b = await f.register('another');
   await f.match(a, b);
 });
 
-test('shared philosophers match across topics and favourites survive profile changes', async () => {
+test('one shared philosopher matches and the choice survives privacy changes', async () => {
   const f = fixture();
   assert.equal(new Set(PHILOSOPHERS.map(p => p.id)).size, PHILOSOPHERS.length);
-  const a = await f.register('alice', { interests: ['truth', 'philosopher:ashtavakra'] });
-  const b = await f.register('bobby', { interests: ['ethics', 'philosopher:ashtavakra'] });
+  const a = await f.register('alice', { interests: ['philosopher:ashtavakra'] });
+  const b = await f.register('bobby', { interests: ['philosopher:ashtavakra'] });
   const roomId = await f.match(a, b);
   const state = await f.call('state', { cookie:a.cookie });
   assert.deepEqual(state.data.room.topics, ['philosopher:ashtavakra']);
@@ -102,6 +102,27 @@ test('shared philosophers match across topics and favourites survive profile cha
   for (const interests of [['philosopher:unknown'], ['<script>'], PHILOSOPHERS.slice(0,11).map(p=>p.id)]) {
     assert.equal((await f.call('profile',{method:'POST',cookie:a.cookie,data:{interests}})).status,400);
   }
+});
+
+test('matching stays within one teacher and English or Hindi, even after a long wait', async () => {
+  const f = fixture();
+  const a = await f.register('alice', { interests:['philosopher:osho'] });
+  const b = await f.register('bobby', { interests:['philosopher:buddha'] });
+  const c = await f.register('carol', { interests:['philosopher:osho'], language:'Hindi' });
+  for (const user of [a,b,c]) assert.equal((await f.call('connect',{method:'POST',cookie:user.cookie,data:{}})).data.state,'waiting');
+  f.sql.prepare('UPDATE queue SET joined_at=?').run(Date.now()-300000);
+  for (const user of [a,b,c]) assert.equal((await f.call('state',{cookie:user.cookie})).data.state,'waiting');
+  for (const data of [{interests:['truth']},{interests:['philosopher:osho','philosopher:buddha']},{language:'Assamese'},{language:'Other'}]) {
+    assert.equal((await f.call('profile',{method:'POST',cookie:a.cookie,data})).status,400);
+  }
+  const d = await f.register('daphne', { interests:['philosopher:osho'], language:'Hindi' });
+  const matched = await f.call('connect',{method:'POST',cookie:d.cookie,data:{}});
+  assert.equal(matched.data.state,'matched');
+  assert.equal(matched.data.room.partner.displayName,'carol');
+  // Existing accounts may edit privacy, but must replace old multi-topic settings before queueing.
+  f.sql.prepare('UPDATE users SET interests=?,language=? WHERE id=?').run('["truth","ethics"]','Assamese',a.data.user.id);
+  assert.equal((await f.call('profile',{method:'POST',cookie:a.cookie,data:{datasetConsent:false}})).status,200);
+  assert.equal((await f.call('connect',{method:'POST',cookie:a.cookie,data:{}})).status,400);
 });
 
 test('matching, messaging and feedback work; outsiders cannot read or write a room', async () => {

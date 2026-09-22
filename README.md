@@ -34,6 +34,6 @@ Run the local load exercise with the same tool/bundle environment variables usin
 
 The public website is https://voiceofvrindavan.com/. Both .in hostnames and www.voiceofvrindavan.com redirect to the corresponding path on the .com apex, preserving query strings. All hostnames use the same Pages project, D1 database and live-room namespaces. Users sign in again on .com with their existing credentials because session cookies are host-specific. The old authenticated dataset endpoint remains compatible with the existing private Google Apps Script while new script installations use .com. The legacy APK download subdomain is independent.
 
-Registration asks only for a name, password and acceptance of the adult terms. Users choose topics, language and conversation style inside the room before finding a match. Optional learning, dataset and training permissions remain off unless enabled in Settings.
+Registration asks only for a name, password and acceptance of the adult terms. Users choose exactly one philosopher or spiritual teacher and English or Hindi inside the room before finding a match. Optional learning, dataset and training permissions remain off unless enabled in Settings.
 
-The room and Settings include a searchable catalogue of 75 philosophers and spiritual teachers plus Others. Up to ten choices are stored alongside topic interests and participate in existing shared-interest matching. Account registration is unchanged.
+The room and Settings include a searchable catalogue of 75 philosophers and spiritual teachers plus Others. Exactly one choice is saved. Matching requires the same choice and language, with no cross-teacher fallback. Legacy multi-topic profiles must choose again before queueing. Account registration is unchanged.

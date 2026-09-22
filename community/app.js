@@ -3,7 +3,6 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
 (() => {
   const $ = (id) => document.getElementById(id);
   const TOPICS = { truth: 'Truth', consciousness: 'Consciousness', meaning: 'Meaning of life', 'free-will': 'Free will', ethics: 'Ethics', spirituality: 'Spirituality' };
-  const STYLES = { explore: 'Explore together', debate: 'Thoughtful debate', listen: 'Listen & reflect' };
   const INTEREST_LABELS = { ...TOPICS, ...PHILOSOPHER_LABELS };
   const API = '/api/community/';
   let audioContext;
@@ -110,14 +109,6 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
   function showDialog(id) { if (!$(id).open) $(id).showModal(); }
   function closeDialog(id) { $(id).close(); }
 
-  document.querySelectorAll('[data-topic-options]').forEach((container) => {
-    for (const [value, text] of Object.entries(TOPICS)) {
-      const label = document.createElement('label'); label.className = 'interest-option';
-      const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'interests'; input.value = value;
-      const span = document.createElement('span'); span.textContent = text;
-      label.append(input, span); container.append(label);
-    }
-  });
   document.querySelectorAll('[data-philosopher-picker]').forEach(picker => {
     const search = picker.querySelector('input[type=search]');
     const options = picker.querySelector('.philosopher-options');
@@ -126,7 +117,7 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
     for (const person of [...PHILOSOPHERS, {id:'philosopher:others', name:'Others', aliases:''}]) {
       const label = document.createElement('label'); label.className = 'interest-option';
       label.dataset.search = searchKey(`${person.name} ${person.aliases}`);
-      const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'interests'; input.value = person.id;
+      const input = document.createElement('input'); input.type = 'radio'; input.name = 'interests'; input.value = person.id;
       const span = document.createElement('span'); span.textContent = person.name;
       label.append(input, span); options.append(label);
     }
@@ -150,7 +141,7 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
     };
     options.addEventListener('change', event => {
       if (options.querySelectorAll('input:checked').length > MAX_PHILOSOPHERS) {
-        event.target.checked = false; status.textContent = `Choose up to ${MAX_PHILOSOPHERS} favourites.`;
+        event.target.checked = false; status.textContent = `Choose one philosopher or spiritual teacher.`;
       }
       picker.refreshSelection();
     });
@@ -159,18 +150,11 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
     picker.querySelector('[data-search]').addEventListener('click', filter);
     picker.querySelector('[data-others]').addEventListener('click', () => {
       const input = options.querySelector('[value="philosopher:others"]');
-      if (!input.checked && options.querySelectorAll('input:checked').length >= MAX_PHILOSOPHERS) { status.textContent = `Choose up to ${MAX_PHILOSOPHERS} favourites.`; return; }
-      input.checked = !input.checked; picker.refreshSelection();
+      input.checked = true; picker.refreshSelection();
     });
     filter(); picker.refreshSelection();
   });
   function refreshPhilosophers(form) { form.querySelectorAll('[data-philosopher-picker]').forEach(picker => picker.refreshSelection()); }
-  const desiredTopic = new URLSearchParams(location.search).get('topic');
-  if (Object.hasOwn(TOPICS, desiredTopic)) {
-    const selected = Array.from($('room-preferences').querySelectorAll('[name=interests]')).find((input) => input.value === desiredTopic);
-    if (selected) selected.checked = true;
-  }
-
   function bindConsent(form) {
     const dataset = form.elements.datasetConsent;
     const training = form.elements.trainingConsent;
@@ -183,8 +167,8 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
   function formProfile(form) {
     const data = new FormData(form);
     const interests = data.getAll('interests');
-    if (!interests.length) throw new Error('Choose at least one topic you’d like to talk about.');
-    return { displayName: String(data.get('displayName') || '').trim(), interests, language: data.get('language'), style: data.get('style'), learningConsent: data.has('learningConsent'), datasetConsent: data.has('datasetConsent'), trainingConsent: data.has('datasetConsent') && data.has('trainingConsent') };
+    if (interests.length !== 1) throw new Error('Choose one philosopher or spiritual teacher.');
+    return { displayName: String(data.get('displayName') || '').trim(), interests, language: data.get('language'), learningConsent: false, datasetConsent: data.has('datasetConsent'), trainingConsent: data.has('datasetConsent') && data.has('trainingConsent') };
   }
 
   function authTab(tab) {
@@ -218,15 +202,14 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
   function renderUser() {
     if (!user) return;
     const choices = $('room-preferences');
-    for (const field of ['language','style']) choices.elements[field].value = user[field];
-    choices.querySelectorAll('[name=interests]').forEach(input => { input.checked = (user.interests || []).includes(input.value) || (!user.interests?.length && input.value === desiredTopic); });
+    choices.elements.language.value = ['English','Hindi'].includes(user.language) ? user.language : 'English';
+    choices.querySelectorAll('[name=interests]').forEach(input => { input.checked = user.interests?.length === 1 && user.interests[0] === input.value; });
     refreshPhilosophers(choices);
     $('greeting-name').textContent = user.displayName + '.';
     $('profile-name').textContent = user.displayName;
     $('profile-username').textContent = '@' + user.username;
     $('avatar').textContent = initials(user.displayName);
     $('profile-language').textContent = user.language;
-    $('profile-style').textContent = STYLES[user.style] || user.style;
     renderTags($('profile-topics'), user.interests || []);
     const learned = learnedTopics();
     $('learned-section').hidden = !user.learningConsent || !learned.length;
@@ -307,9 +290,9 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
     } catch (error) { notice(error.message, true); }
     if (!user || version !== generation) return;
     const form = $('profile-form');
-    for (const field of ['displayName', 'language', 'style']) form.elements[field].value = user[field];
-    for (const field of ['learningConsent', 'datasetConsent', 'trainingConsent']) form.elements[field].checked = !!user[field];
-    form.querySelectorAll('[name=interests]').forEach((checkbox) => { checkbox.checked = (user.interests || []).includes(checkbox.value); });
+    for (const field of ['displayName', 'language']) form.elements[field].value = field === 'language' && !['English','Hindi'].includes(user[field]) ? 'English' : user[field];
+    for (const field of ['datasetConsent', 'trainingConsent']) form.elements[field].checked = !!user[field];
+    form.querySelectorAll('[name=interests]').forEach((checkbox) => { checkbox.checked = user.interests?.length === 1 && user.interests[0] === checkbox.value; });
     refreshPhilosophers(form);
     refreshProfileConsent(); setError('profile-error'); $('profile-success').textContent = ''; showDialog('profile-dialog');
   }
@@ -365,7 +348,7 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
     $('empty-eyebrow').textContent = 'A SHARED INTEREST. A NEW PERSPECTIVE.';
     $('room-preferences').hidden = false;
     $('empty-title').textContent = 'Who would you like to talk to?';
-    $('empty-copy').textContent = 'Choose your interests, then find a match.';
+    $('empty-copy').textContent = 'Choose one teacher and your language, then find a match.';
     $('connect').hidden = false; $('cancel-wait').hidden = true; $('wait-details').hidden = true;
   }
   function renderWaiting() {
@@ -374,7 +357,7 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
     $('empty-room').hidden = false; $('chat-room').hidden = true; $('empty-room').classList.add('is-waiting');
     $('room-status').textContent = 'IN THE WAITING ROOM'; $('empty-eyebrow').textContent = 'GOOD CONVERSATIONS ARE WORTH A MOMENT';
     $('empty-title').textContent = 'Finding your match…';
-    $('empty-copy').textContent = Date.now() - waitingSince > 60000 ? 'Still waiting for someone available. We’re also looking across other philosophy topics in your language. You can leave the queue at any time.' : Date.now() - waitingSince > 25000 ? 'Nobody suitable is available yet. After a minute, we’ll also look across other philosophy topics in your language.' : 'You’re in the queue. We’re looking for an available person who shares your language and interests.';
+    $('empty-copy').textContent = 'Waiting for someone who chose the same teacher and language. You can leave the waiting room to change your choice.';
     $('connect').hidden = true; $('cancel-wait').hidden = false; $('wait-details').hidden = false;
   }
   function showRoom(room) {
@@ -443,7 +426,9 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
     try {
       const result = await request('state?after=' + encodeURIComponent(afterId));
       if (version !== generation || !user) return;
-      if (enteringRoom && (result.state === 'idle' || result.state === 'ended')) renderIdle();
+      if (result.state === 'waiting' && (user.interests?.length !== 1 || !Object.hasOwn(PHILOSOPHER_LABELS, user.interests[0]) || !['English','Hindi'].includes(user.language))) {
+        await request('leave', {roomId:null}); renderIdle();
+      } else if (enteringRoom && (result.state === 'idle' || result.state === 'ended')) renderIdle();
       else applyState(result);
       enteringRoom = false;
       if ($('global-notice').dataset.connectionError === 'true') { notice(''); delete $('global-notice').dataset.connectionError; }
@@ -466,8 +451,8 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
       try {
         const preferences = new FormData($('room-preferences'));
         const interests = preferences.getAll('interests');
-        if (!interests.length) throw new Error('Choose at least one topic or interest.');
-        const updated = await request('profile', { interests, language: preferences.get('language'), style: preferences.get('style') });
+        if (interests.length !== 1) throw new Error('Choose one philosopher or spiritual teacher.');
+        const updated = await request('profile', { interests, language: preferences.get('language'), learningConsent: false });
         user = updated.user; renderUser();
         const result = await request('connect', {}); generation++; currentRoom = null; afterId = 0; seenMessages.clear(); applyState(result); await syncState(); }
       catch (error) { if (isAuthError(error)) signedOut('Your session expired. Please sign in again.'); else { if (state === 'ended') setError('chat-error', error.message); else setError('connect-error', error.message); } }
