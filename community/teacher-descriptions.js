@@ -1,5 +1,6 @@
 // Short identification lines, not quotations or claims about a user's beliefs.
 export const TEACHER_DESCRIPTIONS = {
+  any: 'No preference · Match in your language',
   krishna: 'Teacher in the Bhagavad Gita',
   buddha: 'Buddhist teacher · Awakening',
   ashtavakra: 'Ashtavakra Gita · Non-duality',

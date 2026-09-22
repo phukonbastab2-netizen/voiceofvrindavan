@@ -165,7 +165,10 @@ function matchingChoice(user) {
 }
 function scoreCandidate(me, other, wait, now) {
   const choice = matchingChoice(me);
-  const common = choice && choice === matchingChoice(other) && me.language === other.language ? [choice] : [];
+  const theirs = matchingChoice(other);
+  const compatible = choice && theirs && me.language === other.language &&
+    (choice === theirs || choice === 'philosopher:any' || theirs === 'philosopher:any');
+  const common = compatible ? [choice === 'philosopher:any' ? theirs : choice] : [];
   return { topics: common, score: Math.min(20, (now - wait) / 15000) - (other.poor_feedback ? 30 : 0) };
 }
 async function tryMatch(db, user, now) {
@@ -177,12 +180,13 @@ async function tryMatch(db, user, now) {
       AND ((past.user_a=? AND past.user_b=u.id) OR (past.user_b=? AND past.user_a=u.id))) AS poor_feedback
     FROM queue q JOIN users u ON u.id=q.user_id WHERE q.user_id<>? AND q.heartbeat_at>?
     AND lower(u.language)=lower(?) AND u.suspended=0
-    AND json_array_length(u.interests)=1 AND json_extract(u.interests,'$[0]')=?
+    AND json_array_length(u.interests)=1 AND json_extract(u.interests,'$[0]') LIKE 'philosopher:%'
+    AND (json_extract(u.interests,'$[0]')=? OR json_extract(u.interests,'$[0]')='philosopher:any' OR ?='philosopher:any')
     AND NOT EXISTS(SELECT 1 FROM active_members m WHERE m.user_id=u.id)
     AND NOT EXISTS(SELECT 1 FROM blocks b WHERE (b.blocker_id=? AND b.blocked_id=u.id) OR (b.blocked_id=? AND b.blocker_id=u.id))
     AND NOT EXISTS(SELECT 1 FROM rooms recent WHERE recent.created_at>? AND
       ((recent.user_a=? AND recent.user_b=u.id) OR (recent.user_b=? AND recent.user_a=u.id)))
-    ORDER BY q.joined_at LIMIT 100`, user.id, user.id, user.id, user.id, now - QUEUE_LIFE, user.language, matchingChoice(user),
+    ORDER BY q.joined_at LIMIT 100`, user.id, user.id, user.id, user.id, now - QUEUE_LIFE, user.language, matchingChoice(user), matchingChoice(user),
   user.id, user.id, now - 600000, user.id, user.id).all());
   const ranked = candidates.map(other => ({ other, ...scoreCandidate(user, other, other.joined_at, now) }))
     .filter(item => item.topics.length === 1)
@@ -190,19 +194,19 @@ async function tryMatch(db, user, now) {
   for (const candidate of ranked.slice(0, 3)) {
     const id = crypto.randomUUID();
     const topics = candidate.topics.length ? candidate.topics : [...new Set([...parse(user.interests, []), ...parse(candidate.other.interests, [])])].slice(0, 3);
-    const prompt = topics[0] === 'philosopher:others' ? 'Which teacher would you like to discuss?' : `What interests you about ${PHILOSOPHER_LABELS[topics[0]]}?`;
+    const prompt = topics[0] === 'philosopher:any' ? 'What would you like to explore together?' : topics[0] === 'philosopher:others' ? 'Who would you like to discuss?' : `What interests you about ${PHILOSOPHER_LABELS[topics[0]]}?`;
     // Every eligibility guard is rechecked inside the atomic INSERT, not trusted from the earlier read.
     await stmt(db, `INSERT INTO rooms(id,user_a,user_b,topics,prompt,language,dataset_a,dataset_b,training_a,training_b,created_at,last_activity)
       SELECT ?,a.id,b.id,?,?,a.language,a.dataset_consent,b.dataset_consent,a.training_consent,b.training_consent,?,?
       FROM users a JOIN users b ON b.id=? WHERE a.id=? AND a.suspended=0 AND b.suspended=0 AND lower(a.language)=lower(b.language)
       AND json_array_length(a.interests)=1 AND json_array_length(b.interests)=1
-      AND json_extract(a.interests,'$[0]')=json_extract(b.interests,'$[0]')
-      AND a.language IN ('English','Hindi') AND json_extract(a.interests,'$[0]')=?
+      AND (json_extract(a.interests,'$[0]')=json_extract(b.interests,'$[0]') OR json_extract(a.interests,'$[0]')='philosopher:any' OR json_extract(b.interests,'$[0]')='philosopher:any')
+      AND a.language IN ('English','Hindi') AND json_extract(a.interests,'$[0]')=? AND json_extract(b.interests,'$[0]')=?
       AND EXISTS(SELECT 1 FROM queue q WHERE q.user_id=a.id AND q.heartbeat_at>?)
       AND EXISTS(SELECT 1 FROM queue q WHERE q.user_id=b.id AND q.heartbeat_at>?)
       AND NOT EXISTS(SELECT 1 FROM active_members m WHERE m.user_id IN(a.id,b.id))
       AND NOT EXISTS(SELECT 1 FROM blocks bl WHERE (bl.blocker_id=a.id AND bl.blocked_id=b.id) OR (bl.blocker_id=b.id AND bl.blocked_id=a.id))`,
-    id, JSON.stringify(topics), prompt, now, now, candidate.other.id, user.id, matchingChoice(user), now - QUEUE_LIFE, now - QUEUE_LIFE).run();
+    id, JSON.stringify(topics), prompt, now, now, candidate.other.id, user.id, matchingChoice(user), matchingChoice(candidate.other), now - QUEUE_LIFE, now - QUEUE_LIFE).run();
     const room = await stmt(db, 'SELECT r.* FROM rooms r JOIN active_members m ON r.id=m.room_id WHERE m.user_id=?', user.id).first();
     if (room) return room;
   }

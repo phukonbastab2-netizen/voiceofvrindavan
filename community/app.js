@@ -126,7 +126,7 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     const options = picker.querySelector('.philosopher-options');
     const selected = picker.querySelector('.philosopher-selected');
     const status = picker.querySelector('[role=status]');
-    for (const person of [...PHILOSOPHERS, {id:'philosopher:others', name:'Others', aliases:''}]) {
+    for (const person of [{id:'philosopher:any', name:'Open to anyone', aliases:'anybody everyone no preference'}, ...PHILOSOPHERS, {id:'philosopher:others', name:'Others', aliases:''}]) {
       const label = document.createElement('label'); label.className = 'interest-option';
       label.dataset.search = searchKey(`${person.name} ${person.aliases}`);
       const input = document.createElement('input'); input.type = 'radio'; input.name = 'interests'; input.value = person.id;
@@ -373,7 +373,9 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     $('empty-room').hidden = false; $('chat-room').hidden = true; $('empty-room').classList.add('is-waiting');
     $('room-status').textContent = 'IN THE WAITING ROOM'; $('empty-eyebrow').textContent = 'GOOD CONVERSATIONS ARE WORTH A MOMENT';
     $('empty-title').textContent = 'Finding your match…';
-    $('empty-copy').textContent = 'Waiting for someone who chose the same choice and language. You can leave the waiting room to change your choice.';
+    $('empty-copy').textContent = user.interests?.[0] === 'philosopher:any'
+      ? 'Waiting for anyone available in your selected language. You can change your choice at any time.'
+      : 'Waiting for a match in your language who shares your choice or is open to anyone.';
     $('connect').hidden = true; $('cancel-wait').hidden = false; $('wait-details').hidden = false;
   }
   function showRoom(room) {

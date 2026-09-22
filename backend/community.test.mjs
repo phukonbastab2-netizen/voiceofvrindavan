@@ -125,6 +125,25 @@ test('matching stays within one teacher and English or Hindi, even after a long 
   assert.equal((await f.call('connect',{method:'POST',cookie:a.cookie,data:{}})).status,400);
 });
 
+test('open to anyone matches in either queue order while preserving language and blocks', async () => {
+  for (const [left,right,topic] of [
+    ['philosopher:any','philosopher:osho','philosopher:osho'],
+    ['philosopher:osho','philosopher:any','philosopher:osho'],
+    ['philosopher:any','philosopher:any','philosopher:any']
+  ]) {
+    const f=fixture();const a=await f.register('alice',{interests:[left]});const b=await f.register('bobby',{interests:[right]});
+    await f.match(a,b);
+    assert.deepEqual((await f.call('state',{cookie:a.cookie})).data.room.topics,[topic]);
+  }
+  const f=fixture();const a=await f.register('alice',{interests:['philosopher:any']});
+  const b=await f.register('bobby',{interests:['philosopher:osho'],language:'Hindi'});
+  assert.equal((await f.call('connect',{method:'POST',cookie:a.cookie,data:{}})).data.state,'waiting');
+  assert.equal((await f.call('connect',{method:'POST',cookie:b.cookie,data:{}})).data.state,'waiting');
+  await f.call('profile',{method:'POST',cookie:b.cookie,data:{language:'English'}});
+  f.sql.prepare('INSERT INTO blocks(blocker_id,blocked_id,created_at) VALUES(?,?,?)').run(a.data.user.id,b.data.user.id,Date.now());
+  assert.equal((await f.call('connect',{method:'POST',cookie:b.cookie,data:{}})).data.state,'waiting');
+});
+
 test('matching, messaging and feedback work; outsiders cannot read or write a room', async () => {
   const f = fixture(); const a = await f.register('alice'); const b = await f.register('bob'); const c = await f.register('charlie');
   const roomId = await f.match(a, b);

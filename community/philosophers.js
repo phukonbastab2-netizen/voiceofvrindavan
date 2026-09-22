@@ -35,5 +35,6 @@ export const PHILOSOPHERS = [
 
 export const PHILOSOPHER_LABELS = Object.fromEntries(PHILOSOPHERS.map(p => [p.id, p.name]));
 PHILOSOPHER_LABELS['philosopher:others'] = 'Others';
+PHILOSOPHER_LABELS['philosopher:any'] = 'Open to anyone';
 export const MAX_PHILOSOPHERS = 1;
 export const searchKey = value => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
