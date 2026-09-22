@@ -36,5 +36,5 @@ The public website is https://voiceofvrindavan.com/. Both .in hostnames and www.
 
 Registration asks only for a name, password and acceptance of the adult terms. Users choose exactly one philosopher or spiritual teacher and English or Hindi inside the room before finding a match. Optional dataset and training permissions remain off unless enabled in Settings. Matching uses the selected teacher and language only.
 
-The room and Settings include a searchable catalogue of 75 philosophers and spiritual teachers plus Others. Exactly one choice is saved. Matching requires the same choice and language, with no cross-teacher fallback. Legacy multi-topic profiles must choose again before queueing. Account registration is unchanged.
+The room and Settings include a searchable catalogue of 75 philosophers and spiritual teachers plus Others. Exactly one choice is saved. Matching requires the same language and either the same choice or an explicit Open to anyone choice from at least one participant. Two different specific choices do not match. Legacy multi-topic profiles must choose again before queueing. Account registration is unchanged.
 
