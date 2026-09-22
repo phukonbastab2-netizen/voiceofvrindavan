@@ -157,7 +157,7 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     };
     options.addEventListener('change', event => {
       if (options.querySelectorAll('input:checked').length > MAX_PHILOSOPHERS) {
-        event.target.checked = false; status.textContent = `Choose one philosopher or spiritual teacher.`;
+        event.target.checked = false; status.textContent = `Choose one name.`;
       }
       picker.refreshSelection();
     });
@@ -183,7 +183,7 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
   function formProfile(form) {
     const data = new FormData(form);
     const interests = data.getAll('interests');
-    if (interests.length !== 1) throw new Error('Choose one philosopher or spiritual teacher.');
+    if (interests.length !== 1) throw new Error('Choose one name.');
     return { displayName: String(data.get('displayName') || '').trim(), interests, language: data.get('language'), learningConsent: false, datasetConsent: data.has('datasetConsent'), trainingConsent: data.has('datasetConsent') && data.has('trainingConsent') };
   }
 
@@ -363,8 +363,8 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     $('empty-room').classList.remove('is-waiting'); $('room-status').textContent = 'READY WHEN YOU ARE';
     $('empty-eyebrow').textContent = 'A SHARED INTEREST. A NEW PERSPECTIVE.';
     $('room-preferences').hidden = false;
-    $('empty-title').textContent = 'Choose your teacher';
-    $('empty-copy').textContent = 'Choose one person below, then English or Hindi.';
+    $('empty-title').textContent = 'Choose your loved ones';
+    $('empty-copy').textContent = 'Choose one below, then English or Hindi.';
     $('connect').hidden = false; $('cancel-wait').hidden = true; $('wait-details').hidden = true;
   }
   function renderWaiting() {
@@ -373,7 +373,7 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     $('empty-room').hidden = false; $('chat-room').hidden = true; $('empty-room').classList.add('is-waiting');
     $('room-status').textContent = 'IN THE WAITING ROOM'; $('empty-eyebrow').textContent = 'GOOD CONVERSATIONS ARE WORTH A MOMENT';
     $('empty-title').textContent = 'Finding your match…';
-    $('empty-copy').textContent = 'Waiting for someone who chose the same teacher and language. You can leave the waiting room to change your choice.';
+    $('empty-copy').textContent = 'Waiting for someone who chose the same choice and language. You can leave the waiting room to change your choice.';
     $('connect').hidden = true; $('cancel-wait').hidden = false; $('wait-details').hidden = false;
   }
   function showRoom(room) {
@@ -467,7 +467,7 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
       try {
         const preferences = new FormData($('room-preferences'));
         const interests = preferences.getAll('interests');
-        if (interests.length !== 1) throw new Error('Choose one philosopher or spiritual teacher.');
+        if (interests.length !== 1) throw new Error('Choose one name.');
         const updated = await request('profile', { interests, language: preferences.get('language'), learningConsent: false });
         user = updated.user; renderUser();
         const result = await request('connect', {}); generation++; currentRoom = null; afterId = 0; seenMessages.clear(); applyState(result); await syncState(); }
