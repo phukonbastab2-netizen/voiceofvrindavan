@@ -1,0 +1,5 @@
+const dialog=document.querySelector('#question-dialog');let current='';
+document.querySelectorAll('.topic').forEach(button=>button.addEventListener('click',()=>{current=button.dataset.question;document.querySelector('#dialog-topic').textContent=button.dataset.topic.toUpperCase()+' / A QUESTION TO SIT WITH';document.querySelector('#dialog-question').textContent=current;document.querySelector('#copy-status').textContent='';dialog.showModal()}));
+document.querySelector('.close').addEventListener('click',()=>dialog.close());
+dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close()}});
+document.querySelector('#copy-question').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(current);document.querySelector('#copy-status').textContent='Question copied.'}catch{document.querySelector('#copy-status').textContent='Select the question above to copy it.'}});

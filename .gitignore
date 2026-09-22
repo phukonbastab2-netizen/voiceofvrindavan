@@ -1,0 +1,6 @@
+.dev.vars*
+.env*
+node_modules/
+.wrangler/
+*.log
+private-secrets.json

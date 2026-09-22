@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17392e">
+  <meta name="description" content="Meet another curious mind. Thoughtful one-to-one conversations about truth, consciousness, and the meaning of being human.">
+  <title>The Conversation Room · Voice of Vrindavan</title>
+  <link rel="stylesheet" href="/community/style.css">
+  <script src="/community/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header shell">
+    <a class="wordmark" href="/" aria-label="Voice of Vrindavan home"><span class="brand-seal" aria-hidden="true">v</span><span>VOICE OF<br><b>VRINDAVAN</b></span></a>
+    <a class="header-back" href="/">Back to the beginning <span aria-hidden="true">↗</span></a>
+    <div id="account-nav" class="account-nav" hidden><button id="profile-open" class="text-button">My profile</button><button id="logout" class="text-button">Sign out <span aria-hidden="true">↗</span></button></div>
+  </header>
+
+  <main id="main" class="shell">
+    <div id="boot" class="boot" role="status"><span class="small-spinner"></span><p>Opening the conversation room…</p></div>
+    <div id="global-notice" class="notice" role="status" hidden></div>
+
+    <section id="auth-view" class="auth-layout" hidden aria-labelledby="auth-heading">
+      <div class="welcome">
+        <p class="eyebrow"><span aria-hidden="true">✧</span> A SPACE FOR THE BIG QUESTIONS</p>
+        <h1 id="auth-heading">A meeting <br>of <em>open minds.</em></h1>
+        <p class="welcome-copy">One person. A shared curiosity. <br>A conversation that could change your perspective.</p>
+        <div class="thought-card"><span class="thought-symbol" aria-hidden="true">∞</span><p>“What if understanding begins<br>where certainty ends?”</p><span class="eyebrow">YOUR NEXT CONVERSATION STARTS HERE</span></div>
+        <div class="welcome-details"><p><b>01</b><span>Tell us what makes you curious.</span></p><p><b>02</b><span>Meet someone with a shared interest.</span></p><p><b>03</b><span>Explore a question, together.</span></p></div>
+        <p class="small-note">For adults 18+. Use a nickname. Be curious, be kind, and leave any conversation that doesn’t feel right.</p>
+      </div>
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist" aria-label="Account access"><button id="register-tab" role="tab" aria-selected="true" aria-controls="register-panel" tabindex="0">Create an account</button><button id="login-tab" role="tab" aria-selected="false" aria-controls="login-panel" tabindex="-1">Sign in</button></div>
+        <div id="register-panel" role="tabpanel" aria-labelledby="register-tab">
+          <h2>A little about you.</h2><p class="section-copy">Start with your interests. Your profile can grow with you.</p>
+          <form id="register-form">
+            <div class="field-pair"><label>Username<input name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_]{3,32}" required placeholder="your_username" spellcheck="false"><span class="field-hint">3–32 letters, numbers, or underscores.</span></label><label>Your nickname<input name="displayName" autocomplete="nickname" minlength="2" maxlength="48" required placeholder="What should we call you?"></label></div>
+            <label>Password<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required placeholder="At least 12 characters"><span class="field-hint">Save the recovery code we give you. There is no email reset.</span></label>
+            <fieldset class="interests-field"><legend>What draws you in? <span>Pick at least one.</span></legend><div class="interest-options" data-topic-options="register"></div></fieldset>
+            <div class="field-pair"><label>Language<select name="language"><option>English</option><option>Hindi</option><option>Assamese</option><option>Bengali</option><option>Other</option></select></label><label>Conversation style<select name="style"><option value="explore">Explore together</option><option value="debate">Thoughtful debate</option><option value="listen">Listen &amp; reflect</option></select></label></div>
+            <details class="consent-details" open><summary>Your conversations. Your choices.</summary><p class="field-hint">Messages are stored for up to 30 days for chat delivery and safety. Chats are not end-to-end encrypted.</p><label class="check-row"><input type="checkbox" name="learningConsent"><span><b>Personalize my matches</b><small>Learn topic interests from my own messages. I can reset or turn this off.</small></span></label><label class="check-row"><input type="checkbox" name="datasetConsent"><span><b>Contribute to the conversation dataset</b><small>Optional. Eligible chats are exported to the site owner’s private Google Drive only when both people agree. Identifiers are removed and common personal details redacted, but text may still identify someone.</small></span></label><label class="check-row"><input type="checkbox" name="trainingConsent" disabled><span><b>Also allow AI training use</b><small>Separate permission to use contributed conversations to develop AI. Available only with dataset contribution.</small></span></label></details>
+            <label class="check-row required-check"><input type="checkbox" name="adult" required><span>I am 18 or older and agree to the <a href="/privacy.html" target="_blank" rel="noopener">privacy and community rules</a>.</span></label>
+            <p id="register-error" class="form-error" role="alert"></p><button class="button full" type="submit">Begin your journey <span aria-hidden="true">↗</span></button>
+          </form>
+        </div>
+        <div id="login-panel" role="tabpanel" aria-labelledby="login-tab" hidden>
+          <h2>Welcome back.</h2><p class="section-copy">There is always another question worth exploring.</p>
+          <form id="login-form"><label>Username<input name="username" autocomplete="username" required maxlength="32" spellcheck="false"></label><label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label><p id="login-error" class="form-error" role="alert"></p><button class="button full" type="submit">Enter the conversation room <span aria-hidden="true">↗</span></button></form>
+          <button id="recover-toggle" class="text-button recovery-link">Use a recovery code</button>
+        </div>
+        <div id="recover-panel" hidden><button id="recover-back" class="text-button">← Back to sign in</button><h2>Find your way back.</h2><p class="section-copy">Use the recovery code you saved when you created your account. Your old code will be replaced.</p><form id="recover-form"><label>Username<input name="username" autocomplete="username" required maxlength="32"></label><label>Recovery code<input name="recoveryCode" autocomplete="off" required maxlength="128" spellcheck="false"></label><label>New password<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><p id="recover-error" class="form-error" role="alert"></p><button class="button full" type="submit">Recover account <span aria-hidden="true">↗</span></button></form><p class="small-note">Without your password or saved recovery code, we cannot restore access.</p></div>
+      </div>
+    </section>
+
+    <section id="workspace" hidden aria-label="Conversation room">
+      <div class="workspace-heading"><div><p class="eyebrow"><span aria-hidden="true">✧</span> THE CONVERSATION ROOM</p><h1>Stay curious, <em id="greeting-name"></em></h1></div><span class="availability"><i aria-hidden="true"></i> One-to-one · Text chat</span></div>
+      <div class="room-layout">
+        <aside class="profile-card"><div class="profile-top"><div id="avatar" class="avatar" aria-hidden="true"></div><div><h2 id="profile-name"></h2><p id="profile-username"></p></div></div><div class="profile-section"><p class="eyebrow">YOUR CURIOSITIES</p><div id="profile-topics" class="tag-list"></div></div><div class="profile-section"><p class="eyebrow">HOW YOU CONNECT</p><p id="profile-language" class="profile-detail"></p><p id="profile-style" class="profile-detail"></p></div><div id="learned-section" class="profile-section" hidden><p class="eyebrow">DISCOVERED THROUGH CONVERSATION</p><div id="learned-topics" class="tag-list"></div><p class="field-hint">Suggestions from your own messages, not a judgement about your beliefs.</p></div><button id="sidebar-profile-open" class="outline-button full">Edit interests &amp; privacy <span aria-hidden="true">↗</span></button><div class="sidebar-note"><span aria-hidden="true">✧</span><p>Share an interest.<br>You don’t have to share an opinion.</p></div><a class="privacy-link" href="/privacy.html" target="_blank" rel="noopener">Privacy &amp; community rules ↗</a></aside>
+        <div class="conversation-panel">
+          <div class="room-topbar"><span id="room-status" class="room-status">READY WHEN YOU ARE</span><span class="room-mark" aria-hidden="true">✧</span></div>
+          <div id="empty-room" class="empty-room">
+            <div class="orbit-art" aria-hidden="true"><span class="orbit orbit-one"></span><span class="orbit orbit-two"></span><span class="orbit-dot"></span><span class="orbit-center">∞</span></div>
+            <p class="eyebrow" id="empty-eyebrow">A SHARED INTEREST. A NEW PERSPECTIVE.</p><h2 id="empty-title">Who will you<br><em>think with today?</em></h2><p id="empty-copy">We’ll look for someone available who shares your language and curiosity. Every conversation begins with a question.</p><button id="connect" class="button">Find a conversation <span aria-hidden="true">↗</span></button><button id="cancel-wait" class="outline-button" hidden>Leave the waiting room</button><p id="wait-details" class="small-note" hidden>Keep this page open. You’ll be connected when a suitable person joins.</p><p id="connect-error" class="form-error" role="alert"></p>
+          </div>
+          <section id="chat-room" class="chat-room" hidden aria-label="Private conversation">
+            <div class="partner-bar"><div class="partner-details"><div id="partner-avatar" class="avatar small-avatar" aria-hidden="true"></div><div><h2 id="partner-name"></h2><p id="room-topics"></p></div></div><div class="room-controls"><button id="report-open" class="text-button">Report</button><button id="block-open" class="text-button">Block</button><button id="leave" class="outline-button">Leave</button></div></div>
+            <div class="conversation-prompt"><span aria-hidden="true">✧</span><div><p class="eyebrow">A PLACE TO BEGIN</p><p id="room-prompt"></p></div></div>
+            <div id="message-list" class="message-list" role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions"><p id="no-messages" class="no-messages">Say hello. A good question goes a long way.</p></div>
+            <p id="chat-error" class="form-error chat-error" role="alert"></p>
+            <form id="message-form" class="message-form"><label class="sr-only" for="message-text">Your message</label><textarea id="message-text" name="text" rows="1" maxlength="2000" placeholder="Let a thought become a conversation…" required></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button><div class="composer-hint"><span>Enter to send · Shift + Enter for a new line</span><span id="message-count">0 / 2000</span></div></form>
+            <div id="ended-panel" class="ended-panel" hidden><p id="ended-text">This conversation has come to a close.</p><div id="feedback-buttons" class="feedback"><span>Was this a good match?</span><button type="button" data-rating="good" class="outline-button">Yes, thoughtful</button><button type="button" data-rating="poor" class="outline-button">Not this time</button></div><p id="feedback-status" class="field-hint" role="status"></p><button id="connect-again" class="button">Meet another mind <span aria-hidden="true">↗</span></button></div>
+          </section>
+          <div class="room-footnote"><span aria-hidden="true">◇</span><p>Be kind. Keep personal details private. You can leave, block, or report at any time.</p></div>
+        </div>
+      </div>
+    </section>
+    <noscript><p class="notice">Please enable JavaScript to create an account and use live conversations.</p></noscript>
+  </main>
+
+  <footer class="shell site-footer"><span>VOICE OF VRINDAVAN</span><p>A little less certainty. A little more understanding.</p><a href="/privacy.html">Privacy &amp; community rules ↗</a></footer>
+
+  <dialog id="profile-dialog" aria-labelledby="profile-title"><div class="dialog-header"><p class="eyebrow">MAKE SPACE FOR CHANGE</p><button class="dialog-close" data-close="profile-dialog" aria-label="Close profile">×</button></div><h2 id="profile-title">Your evolving self.</h2><p class="section-copy">Adjust your interests and decide what your conversations contribute.</p><form id="profile-form"><label>Nickname<input name="displayName" required minlength="2" maxlength="48"></label><fieldset class="interests-field"><legend>Your interests <span>Pick at least one.</span></legend><div class="interest-options" data-topic-options="profile"></div></fieldset><div class="field-pair"><label>Language<select name="language"><option>English</option><option>Hindi</option><option>Assamese</option><option>Bengali</option><option>Other</option></select></label><label>Conversation style<select name="style"><option value="explore">Explore together</option><option value="debate">Thoughtful debate</option><option value="listen">Listen &amp; reflect</option></select></label></div><div class="profile-consents"><label class="check-row"><input name="learningConsent" type="checkbox"><span><b>Personalize my matches</b><small>Learn interests from my own messages. Turning this off clears learned interests.</small></span></label><label class="check-row"><input name="datasetConsent" type="checkbox"><span><b>Contribute to the conversation dataset</b><small>Export eligible chats to the owner’s private Google Drive only when both participants agree.</small></span></label><label class="check-row"><input name="trainingConsent" type="checkbox"><span><b>Allow AI training use</b><small>Separate permission for contributed conversations to be used to develop AI.</small></span></label><p class="field-hint">Chats are stored up to 30 days for delivery and safety. Changing permission affects future exports. See the <a href="/privacy.html" target="_blank" rel="noopener">privacy notice</a> for retention and withdrawal.</p></div><p id="profile-error" class="form-error" role="alert"></p><p id="profile-success" class="success-message" role="status"></p><button class="button full" type="submit">Save my preferences <span aria-hidden="true">↗</span></button></form><div class="account-tools"><button id="reset-learning" class="text-button">Reset learned interests</button><button id="export-data" class="text-button">Download my data ↓</button><button id="delete-open" class="text-button danger-text">Delete my account</button></div></dialog>
+
+  <dialog id="recovery-dialog" aria-labelledby="recovery-title"><p class="eyebrow">KEEP THIS SOMEWHERE SAFE</p><h2 id="recovery-title">Your way back in.</h2><p class="section-copy">This recovery code is shown once. Save it in your password manager or another private place. Anyone with this code and your username can reset your password.</p><label>Recovery code<input id="recovery-value" class="recovery-code" readonly aria-label="Your recovery code"></label><button id="download-recovery" class="outline-button full">Download recovery code ↓</button><label class="check-row required-check"><input id="saved-recovery" type="checkbox"><span>I have saved my recovery code.</span></label><button id="recovery-done" class="button full" disabled>Continue <span aria-hidden="true">↗</span></button><p class="small-note">We cannot send an email reset or retrieve this code for you.</p></dialog>
+
+  <dialog id="report-dialog" aria-labelledby="report-title"><div class="dialog-header"><p class="eyebrow">HELP KEEP THIS SPACE RESPECTFUL</p><button class="dialog-close" data-close="report-dialog" aria-label="Close report">×</button></div><h2 id="report-title">Report a concern.</h2><form id="report-form"><label>What happened?<select name="reason" required><option value="" disabled selected>Select a reason</option value="Harassment or abusive behavior">Harassment or abusive behavior</option><option value="Hate or discrimination">Hate or discrimination</option><option value="Sexual or inappropriate content">Sexual or inappropriate content</option><option value="Spam or scam">Spam or scam</option><option value="Safety concern">Safety concern</option><option value="Other concern">Other concern</option></select></label><p class="small-note">Reporting saves your concern for review and ends this conversation. You can also block this person to prevent future matches.</p><p id="report-error" class="form-error" role="alert"></p><button class="button full" type="submit">Submit report</button></form></dialog>
+
+  <dialog id="block-dialog" aria-labelledby="block-title"><div class="dialog-header"><p class="eyebrow">YOUR BOUNDARIES MATTER</p><button class="dialog-close" data-close="block-dialog" aria-label="Close block confirmation">×</button></div><h2 id="block-title">Block this person?</h2><p class="section-copy">This ends your conversation and prevents your accounts from being matched again.</p><p id="block-error" class="form-error" role="alert"></p><button id="block-confirm" class="button full">Block and leave</button></dialog>
+
+  <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-header"><p class="eyebrow">ACCOUNT SETTINGS</p><button class="dialog-close" data-close="delete-dialog" aria-label="Close delete confirmation">×</button></div><h2 id="delete-title">Leave this space?</h2><p class="section-copy">Deleting your account ends active conversations and removes your profile. This cannot be undone. The privacy notice explains what happens to previously exported data and safety records.</p><form id="delete-form"><label>Confirm your password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label><p id="delete-error" class="form-error" role="alert"></p><button class="button danger-button full" type="submit">Permanently delete my account</button></form></dialog>
+</body>
+</html>
