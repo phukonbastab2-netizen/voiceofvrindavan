@@ -1,3 +1,5 @@
+import { runMaintenance as maintenance } from '../../../backend/maintenance.js';
+
 const TOPICS = ['truth', 'consciousness', 'free-will', 'ethics', 'spirituality', 'meaning'];
 const PROMPTS = {
   truth: 'Can something be true even if nobody can prove it?',
@@ -157,17 +159,6 @@ async function expireOwnRoom(db, userId, now) {
     AND id IN (SELECT room_id FROM active_members WHERE user_id=?)
     AND (created_at<? OR EXISTS(SELECT 1 FROM active_members m WHERE m.room_id=rooms.id AND m.heartbeat_at<?))`,
   now, userId, now - 2 * 3600000, now - QUEUE_LIFE).run();
-}
-async function maintenance(db, now) {
-  await db.batch([
-    stmt(db, `UPDATE rooms SET status='ended',ended_at=? WHERE status='active' AND id IN
-      (SELECT r.id FROM rooms r WHERE r.status='active' AND (r.created_at<? OR EXISTS
-      (SELECT 1 FROM active_members m WHERE m.room_id=r.id AND m.heartbeat_at<?)) LIMIT 100)`, now, now - 7200000, now - QUEUE_LIFE),
-    stmt(db, 'DELETE FROM queue WHERE user_id IN (SELECT user_id FROM queue WHERE heartbeat_at<? LIMIT 100)', now - QUEUE_LIFE),
-    stmt(db, 'DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE expires_at<? LIMIT 500)', now),
-    stmt(db, 'DELETE FROM rate_limits WHERE bucket IN (SELECT bucket FROM rate_limits WHERE expires_at<? LIMIT 500)', now),
-    stmt(db, 'DELETE FROM rooms WHERE id IN (SELECT id FROM rooms WHERE created_at<? LIMIT 100)', now - RETENTION)
-  ]);
 }
 function scoreCandidate(me, other, wait, now) {
   const ownTopics = parse(me.interests, []); const theirTopics = parse(other.interests, []);
@@ -414,7 +405,8 @@ export async function onRequest(context) {
       return json(await getState(db, user, now));
     }
     if (path === 'state' && request.method === 'GET') {
-      await rate(db, `poll:${user.id}`, 45, 60000, now);
+      // Four-second background polling plus a refresh after each permitted send must fit.
+      await rate(db, `poll:${user.id}`, 60, 60000, now);
       const after = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Number(url.searchParams.get('after')) || 0));
       return json(await getState(db, user, now, after));
     }

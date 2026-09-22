@@ -199,8 +199,16 @@
     catch (error) { notice(error.message, true); }
   }));
 
-  function openProfile() {
+  async function openProfile() {
     if (!user) return;
+    const version = generation;
+    try {
+      const latest = await request('me');
+      if (version !== generation) return;
+      if (!latest.user) { signedOut('Your session expired. Please sign in again.'); return; }
+      user = latest.user; renderUser();
+    } catch (error) { notice(error.message, true); }
+    if (!user || version !== generation) return;
     const form = $('profile-form');
     for (const field of ['displayName', 'language', 'style']) form.elements[field].value = user[field];
     for (const field of ['learningConsent', 'datasetConsent', 'trainingConsent']) form.elements[field].checked = !!user[field];

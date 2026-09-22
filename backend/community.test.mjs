@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { onRequest, testing } from '../functions/api/community/[[path]].js';
+import maintenanceWorker from './maintenance-worker.js';
 
 const schema = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 const origin = 'https://voiceofvrindavan.test';
@@ -199,7 +200,8 @@ test('expired content is excluded and retention maintenance physically deletes i
   await f.call('leave', { method: 'POST', cookie: a.cookie, data: { roomId } });
   f.sql.prepare('UPDATE rooms SET created_at=?').run(Date.now() - 31 * 86400000);
   assert.deepEqual((await f.call('export', { cookie: a.cookie })).data.messages, []);
-  await testing.maintenance(f.db, Date.now());
+  assert.equal(maintenanceWorker.fetch, undefined);
+  await maintenanceWorker.scheduled({ scheduledTime: Date.now() }, { COMMUNITY_DB: f.db });
   assert.equal(f.sql.prepare('SELECT count(*) n FROM rooms').get().n, 0);
   assert.equal(f.sql.prepare('SELECT count(*) n FROM messages').get().n, 0);
 });
