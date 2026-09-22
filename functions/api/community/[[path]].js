@@ -1,5 +1,6 @@
 import { liveRequest, liveEnabled } from '../../../backend/live-api.js';
 import { runMaintenance as maintenance } from '../../../backend/maintenance.js';
+import { PHILOSOPHER_LABELS, MAX_PHILOSOPHERS } from '../../../community/philosophers.js';
 
 const TOPICS = ['truth', 'consciousness', 'free-will', 'ethics', 'spirituality', 'meaning'];
 const PROMPTS = {
@@ -80,8 +81,9 @@ function profileInput(data, existing = null, allowEmptyInterests = false) {
   const displayName = String(value('displayName', 'display_name') || '').trim();
   if (displayName.length < 2 || displayName.length > 48 || /[\p{Cc}\p{Cf}<>]/u.test(displayName)) fail(400, 'invalid_name', 'Choose a display name of 2–48 characters.');
   const originalInterests = data.interests ?? (existing && parse(existing.interests, []));
-  if (!Array.isArray(originalInterests) || originalInterests.length < (allowEmptyInterests ? 0 : 1) || originalInterests.length > 6 || originalInterests.some(v => !TOPICS.includes(v))) fail(400, 'invalid_interests', 'Choose one to six listed interests.');
+  if (!Array.isArray(originalInterests) || originalInterests.length < (allowEmptyInterests ? 0 : 1) || originalInterests.length > 6 + MAX_PHILOSOPHERS || originalInterests.some(v => typeof v !== 'string' || (!TOPICS.includes(v) && !Object.hasOwn(PHILOSOPHER_LABELS, v)))) fail(400, 'invalid_interests', 'Choose listed topics or favourite philosophers.');
   const interests = [...new Set(originalInterests)];
+  if (interests.filter(v => Object.hasOwn(PHILOSOPHER_LABELS, v)).length > MAX_PHILOSOPHERS) fail(400, 'invalid_interests', 'Choose up to ten favourite philosophers.');
   const language = String(value('language', 'language') || '').trim();
   if (language.length < 2 || language.length > 32 || !/^[\p{L}\p{M} ()-]+$/u.test(language)) fail(400, 'invalid_language', 'Choose a language.');
   const style = value('style', 'style');

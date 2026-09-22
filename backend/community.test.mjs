@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { onRequest, testing } from '../functions/api/community/[[path]].js';
 import maintenanceWorker from './maintenance-worker.js';
+import { PHILOSOPHERS } from '../community/philosophers.js';
 
 const schema = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 const origin = 'https://voiceofvrindavan.test';
@@ -84,6 +85,23 @@ test('minimal registration defers interests until the room and keeps optional co
   assert.equal(profile.data.user.datasetConsent, false);
   const b = await f.register('another');
   await f.match(a, b);
+});
+
+test('shared philosophers match across topics and favourites survive profile changes', async () => {
+  const f = fixture();
+  assert.equal(new Set(PHILOSOPHERS.map(p => p.id)).size, PHILOSOPHERS.length);
+  const a = await f.register('alice', { interests: ['truth', 'philosopher:ashtavakra'] });
+  const b = await f.register('bobby', { interests: ['ethics', 'philosopher:ashtavakra'] });
+  const roomId = await f.match(a, b);
+  const state = await f.call('state', { cookie:a.cookie });
+  assert.deepEqual(state.data.room.topics, ['philosopher:ashtavakra']);
+  await f.call('leave', { method:'POST', cookie:a.cookie, data:{roomId} });
+  assert.equal((await f.call('profile', {method:'POST',cookie:a.cookie,data:{interests:['philosopher:others']}})).status,200);
+  const changed = await f.call('profile', {method:'POST',cookie:a.cookie,data:{datasetConsent:true}});
+  assert.deepEqual(changed.data.user.interests,['philosopher:others']);
+  for (const interests of [['philosopher:unknown'], ['<script>'], PHILOSOPHERS.slice(0,11).map(p=>p.id)]) {
+    assert.equal((await f.call('profile',{method:'POST',cookie:a.cookie,data:{interests}})).status,400);
+  }
 });
 
 test('matching, messaging and feedback work; outsiders cannot read or write a room', async () => {

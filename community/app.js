@@ -1,9 +1,10 @@
-'use strict';
+import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from './philosophers.js';
 
 (() => {
   const $ = (id) => document.getElementById(id);
   const TOPICS = { truth: 'Truth', consciousness: 'Consciousness', meaning: 'Meaning of life', 'free-will': 'Free will', ethics: 'Ethics', spirituality: 'Spirituality' };
   const STYLES = { explore: 'Explore together', debate: 'Thoughtful debate', listen: 'Listen & reflect' };
+  const INTEREST_LABELS = { ...TOPICS, ...PHILOSOPHER_LABELS };
   const API = '/api/community/';
   let audioContext;
   let soundEnabled = true;
@@ -117,6 +118,53 @@
       label.append(input, span); container.append(label);
     }
   });
+  document.querySelectorAll('[data-philosopher-picker]').forEach(picker => {
+    const search = picker.querySelector('input[type=search]');
+    const options = picker.querySelector('.philosopher-options');
+    const selected = picker.querySelector('.philosopher-selected');
+    const status = picker.querySelector('[role=status]');
+    for (const person of [...PHILOSOPHERS, {id:'philosopher:others', name:'Others', aliases:''}]) {
+      const label = document.createElement('label'); label.className = 'interest-option';
+      label.dataset.search = searchKey(`${person.name} ${person.aliases}`);
+      const input = document.createElement('input'); input.type = 'checkbox'; input.name = 'interests'; input.value = person.id;
+      const span = document.createElement('span'); span.textContent = person.name;
+      label.append(input, span); options.append(label);
+    }
+    const filter = () => {
+      const words = searchKey(search.value).split(' ').filter(Boolean); let count = 0;
+      options.querySelectorAll('label').forEach(label => {
+        label.hidden = !words.every(word => label.dataset.search.includes(word));
+        if (!label.hidden) count++;
+      });
+      status.textContent = count ? `${count} choices` : 'No names found. You can choose Others below.';
+    };
+    picker.refreshSelection = () => {
+      selected.replaceChildren();
+      options.querySelectorAll('input:checked').forEach(input => {
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'selected-philosopher';
+        button.textContent = `${PHILOSOPHER_LABELS[input.value]} · Remove`;
+        button.addEventListener('click', () => { input.checked = false; picker.refreshSelection(); });
+        selected.append(button);
+      });
+      picker.querySelector('[data-selection-count]').textContent = `${selected.childElementCount} selected`;
+    };
+    options.addEventListener('change', event => {
+      if (options.querySelectorAll('input:checked').length > MAX_PHILOSOPHERS) {
+        event.target.checked = false; status.textContent = `Choose up to ${MAX_PHILOSOPHERS} favourites.`;
+      }
+      picker.refreshSelection();
+    });
+    search.addEventListener('input', filter);
+    search.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); filter(); } });
+    picker.querySelector('[data-search]').addEventListener('click', filter);
+    picker.querySelector('[data-others]').addEventListener('click', () => {
+      const input = options.querySelector('[value="philosopher:others"]');
+      if (!input.checked && options.querySelectorAll('input:checked').length >= MAX_PHILOSOPHERS) { status.textContent = `Choose up to ${MAX_PHILOSOPHERS} favourites.`; return; }
+      input.checked = !input.checked; picker.refreshSelection();
+    });
+    filter(); picker.refreshSelection();
+  });
+  function refreshPhilosophers(form) { form.querySelectorAll('[data-philosopher-picker]').forEach(picker => picker.refreshSelection()); }
   const desiredTopic = new URLSearchParams(location.search).get('topic');
   if (Object.hasOwn(TOPICS, desiredTopic)) {
     const selected = Array.from($('room-preferences').querySelectorAll('[name=interests]')).find((input) => input.value === desiredTopic);
@@ -159,7 +207,7 @@
 
   function renderTags(target, values) {
     target.replaceChildren();
-    for (const value of values) { const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = TOPICS[value] || value; target.append(tag); }
+    for (const value of values) { const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = INTEREST_LABELS[value] || value; target.append(tag); }
   }
   function learnedTopics() {
     const interests = user?.learnedInterests;
@@ -172,6 +220,7 @@
     const choices = $('room-preferences');
     for (const field of ['language','style']) choices.elements[field].value = user[field];
     choices.querySelectorAll('[name=interests]').forEach(input => { input.checked = (user.interests || []).includes(input.value) || (!user.interests?.length && input.value === desiredTopic); });
+    refreshPhilosophers(choices);
     $('greeting-name').textContent = user.displayName + '.';
     $('profile-name').textContent = user.displayName;
     $('profile-username').textContent = '@' + user.username;
@@ -261,6 +310,7 @@
     for (const field of ['displayName', 'language', 'style']) form.elements[field].value = user[field];
     for (const field of ['learningConsent', 'datasetConsent', 'trainingConsent']) form.elements[field].checked = !!user[field];
     form.querySelectorAll('[name=interests]').forEach((checkbox) => { checkbox.checked = (user.interests || []).includes(checkbox.value); });
+    refreshPhilosophers(form);
     refreshProfileConsent(); setError('profile-error'); $('profile-success').textContent = ''; showDialog('profile-dialog');
   }
   $('profile-open').addEventListener('click', openProfile); $('sidebar-profile-open').addEventListener('click', openProfile);
@@ -341,7 +391,7 @@
     $('empty-room').hidden = true; $('chat-room').hidden = false;
     $('partner-name').textContent = room.partner?.displayName || 'Your conversation partner';
     $('partner-avatar').textContent = initials(room.partner?.displayName);
-    $('room-topics').textContent = (room.topics || []).map((topic) => TOPICS[topic] || topic).join(' · ');
+    $('room-topics').textContent = (room.topics || []).map((topic) => INTEREST_LABELS[topic] || topic).join(' · ');
     $('room-prompt').textContent = room.prompt || 'What is a question you keep coming back to?';
   }
   function addMessages(messages, advanceCursor = true) {
