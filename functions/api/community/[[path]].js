@@ -1,3 +1,4 @@
+import { liveRequest, liveEnabled } from '../../../backend/live-api.js';
 import { runMaintenance as maintenance } from '../../../backend/maintenance.js';
 
 const TOPICS = ['truth', 'consciousness', 'free-will', 'ethics', 'spirituality', 'meaning'];
@@ -137,7 +138,7 @@ async function createSession(db, userId, now) {
 async function currentUser(db, request, now) {
   const token = (request.headers.get('Cookie') || '').split(';').map(v => v.trim()).find(v => v.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
-  return stmt(db, `SELECT u.*,s.token_hash AS session_hash FROM sessions s JOIN users u ON u.id=s.user_id
+  return stmt(db, `SELECT u.*,s.token_hash AS session_hash,s.expires_at AS session_expires FROM sessions s JOIN users u ON u.id=s.user_id
     WHERE s.token_hash=? AND s.expires_at>? AND u.suspended=0`, await digest(token), now).first();
 }
 async function roomFor(db, userId, roomId) {
@@ -205,11 +206,11 @@ async function tryMatch(db, user, now) {
   }
   return null;
 }
-async function getState(db, user, now, after = 0) {
+async function getState(db, user, now, after = 0, live = false) {
   await expireOwnRoom(db, user.id, now);
-  await db.batch([
-    stmt(db, 'UPDATE active_members SET heartbeat_at=? WHERE user_id=?', now, user.id),
-    stmt(db, 'UPDATE queue SET heartbeat_at=? WHERE user_id=? AND heartbeat_at>?', now, user.id, now - QUEUE_LIFE)
+  if (!live) await db.batch([
+    stmt(db, 'UPDATE active_members SET heartbeat_at=MAX(heartbeat_at,?) WHERE user_id=?', now, user.id),
+    stmt(db, 'UPDATE queue SET heartbeat_at=MAX(heartbeat_at,?) WHERE user_id=? AND heartbeat_at>?', now, user.id, now - QUEUE_LIFE)
   ]);
   let room = await stmt(db, 'SELECT r.* FROM rooms r JOIN active_members m ON m.room_id=r.id WHERE m.user_id=?', user.id).first();
   if (!room) {
@@ -318,7 +319,7 @@ async function adminRoute(request, env, db, path, url, now) {
   fail(404, 'not_found', 'This endpoint does not exist.');
 }
 
-export async function onRequest(context) {
+async function coreRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url); const now = Date.now();
   const path = url.pathname.replace(/^\/api\/community\/?/, '').replace(/\/$/, '');
@@ -402,13 +403,13 @@ export async function onRequest(context) {
       await maintenance(db, now);
       const active = await stmt(db, 'SELECT room_id FROM active_members WHERE user_id=?', user.id).first();
       if (!active) await stmt(db, `INSERT INTO queue(user_id,joined_at,heartbeat_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET heartbeat_at=excluded.heartbeat_at`, user.id, now, now).run();
-      return json(await getState(db, user, now));
+      return json(await getState(db, user, now, 0, liveEnabled(env)));
     }
     if (path === 'state' && request.method === 'GET') {
       // Four-second background polling plus a refresh after each permitted send must fit.
       await rate(db, `poll:${user.id}`, 60, 60000, now);
       const after = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Number(url.searchParams.get('after')) || 0));
-      return json(await getState(db, user, now, after));
+      return json(await getState(db, user, now, after, liveEnabled(env)));
     }
     if (path === 'message' && request.method === 'POST') {
       await rate(db, `message:${user.id}`, 30, 60000, now);
@@ -421,7 +422,7 @@ export async function onRequest(context) {
         WHERE EXISTS(SELECT 1 FROM rooms WHERE id=? AND status='active' AND (user_a=? OR user_b=?))
         AND (SELECT count(*) FROM messages WHERE room_id=?)<? RETURNING *`, room.id, user.id, text, now, room.id, user.id, user.id, room.id, MAX_MESSAGES).first();
       if (!inserted) fail(409, 'room_limit', 'This conversation has ended or reached its message limit. Start another conversation.');
-      const updates = [stmt(db, 'UPDATE rooms SET last_activity=? WHERE id=?', now, room.id), stmt(db, 'UPDATE active_members SET heartbeat_at=? WHERE user_id=?', now, user.id)];
+      const updates = [stmt(db, 'UPDATE rooms SET last_activity=? WHERE id=?', now, room.id), stmt(db, 'UPDATE active_members SET heartbeat_at=MAX(heartbeat_at,?) WHERE user_id=?', now, user.id)];
       if (user.learning_consent) {
         const learned = { ...parse(user.learned_interests, {}) };
         for (const topic of TOPICS) if (KEYWORDS[topic].test(text)) learned[topic] = Math.min(100, (learned[topic] || 0) + 1);
@@ -489,3 +490,9 @@ export async function onRequest(context) {
 }
 
 export const testing = { TOPICS, profileInput, scoreCandidate, redact, passwordHash, verifyPassword, maintenance, tryMatch, safeUser };
+
+export async function onRequest(context) {
+  try { return await liveRequest(context, coreRequest, { currentUser, stmt, rate }); }
+  catch (error) { console.error(JSON.stringify({event:'live_gateway_error',name:error?.name})); return json({error:'The connection is temporarily unavailable.'},503); }
+}
+export { stmt, currentUser, getState, messageView, roomView };

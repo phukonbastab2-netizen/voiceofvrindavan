@@ -205,3 +205,26 @@ test('expired content is excluded and retention maintenance physically deletes i
   assert.equal(f.sql.prepare('SELECT count(*) n FROM rooms').get().n, 0);
   assert.equal(f.sql.prepare('SELECT count(*) n FROM messages').get().n, 0);
 });
+
+test('live transport uses read-only presence snapshots and publishes saved messages', async () => {
+  const f = fixture();
+  const a = await f.register('livealice'), b = await f.register('livebruno');
+  const notifications = [];
+  const stub = { async prepare(id) { notifications.push(['prepare',id]); }, async refresh(ids) { notifications.push(['refresh',ids]); }, async deliver(id) { notifications.push(['deliver',id]); } };
+  f.env.CHAT_ROOMS = f.env.CHAT_LOBBIES = { idFromName: value => value, get: () => stub };
+  assert.equal((await f.call('me', { cookie:a.cookie })).data.realtime,true);
+  const roomId = await f.match(a,b);
+  const before = f.sql.prepare('SELECT user_id,heartbeat_at FROM active_members ORDER BY user_id').all();
+  await new Promise(resolve => setTimeout(resolve,10));
+  await f.call('state', {cookie:a.cookie});
+  assert.deepEqual(f.sql.prepare('SELECT user_id,heartbeat_at FROM active_members ORDER BY user_id').all(),before);
+  const sent = await f.call('message',{method:'POST',cookie:a.cookie,data:{roomId,text:'Persistent before push'}});
+  assert.equal(sent.status,201);
+  assert(notifications.some(([kind,id])=>kind==='deliver' && id===sent.data.message.id));
+  stub.deliver=async()=>{throw new Error('Temporary delivery outage');};
+  const recovered = await f.call('message',{method:'POST',cookie:a.cookie,data:{roomId,text:'Recover this on reconnect'}});
+  assert.equal(recovered.status,201);
+  const state=await f.call('state',{cookie:b.cookie});
+  assert.equal(state.data.messages.length,2);
+  assert.equal(state.data.messages[1].text,'Recover this on reconnect');
+});

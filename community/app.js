@@ -15,6 +15,40 @@
   document.addEventListener('pointerdown', () => { try { audioContext ||= new (window.AudioContext || window.webkitAudioContext)(); audioContext.resume(); } catch {} }, {once:true});
   function soundLabel(){ $('sound-toggle').textContent = soundEnabled ? 'Sound on' : 'Sound off'; $('sound-toggle').setAttribute('aria-pressed',String(soundEnabled)); }
   $('sound-toggle').addEventListener('click',()=>{soundEnabled=!soundEnabled;try { localStorage.setItem('vov-sound',soundEnabled?'on':'off'); } catch {}soundLabel();tone();});soundLabel();
+  let realtimeEnabled = false, liveSocket = null, liveKey = '', livePing = null, liveRetry = null, liveFailures = 0;
+  function closeLive() {
+    clearInterval(livePing); clearTimeout(liveRetry); livePing = liveRetry = null;
+    const old = liveSocket; liveSocket = null; liveKey = ''; if (old) old.close(1000, 'Room changed');
+  }
+  function ensureLive() {
+    if (!realtimeEnabled || !user || !['waiting','matched'].includes(state)) return;
+    const key = state === 'matched' ? currentRoom?.id : 'waiting';
+    if (!key || (liveSocket && liveKey === key && liveSocket.readyState < 2)) return;
+    closeLive(); liveKey = key;
+    const address = new URL(API + 'live', location.origin); address.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    if (key !== 'waiting') address.searchParams.set('room',key);
+    const socket = new WebSocket(address); liveSocket = socket;
+    socket.onopen = () => {
+      if (liveSocket !== socket) return;
+      liveFailures = 0; socket.send('ping');
+      livePing = setInterval(() => { if(socket.readyState === WebSocket.OPEN) socket.send('ping'); },25000);
+    };
+    socket.onmessage = event => {
+      if (liveSocket !== socket || event.data === 'pong') return;
+      let packet; try {packet=JSON.parse(event.data);} catch { return; }
+      if (packet.type === 'ready' || packet.type === 'refresh') syncState();
+      else if(packet.type === 'message' && packet.roomId === currentRoom?.id && state === 'matched') addMessages([packet.message],false);
+      else if(packet.type === 'ended' && packet.roomId === currentRoom?.id) {renderEnded();syncState();}
+    };
+    socket.onclose = event => {
+      if(liveSocket !== socket) return;
+      liveSocket=null; clearInterval(livePing);
+      if(event.code===4001) {signedOut('Your session expired. Please sign in again.');return;}
+      const delay=Math.min(30000,1000*2**Math.min(liveFailures++,5));
+      if(user && ['waiting','matched'].includes(state)) liveRetry=setTimeout(()=>{syncState();ensureLive();},delay);
+    };
+    socket.onerror = () => { /* close/reconciliation handles network failures */ };
+  }
   let autoJoin = false;
   let user = null;
   let currentRoom = null;
@@ -46,6 +80,7 @@
       const response = await fetch(API + path, options);
       let result;
       try { result = await response.json(); } catch { throw new Error('The service returned an unexpected response. Please try again shortly.'); }
+      if (typeof result.realtime === 'boolean') realtimeEnabled = result.realtime;
       if (!response.ok) {
         const error = new Error(result.error || 'Something went wrong. Please try again.');
         error.status = response.status;
@@ -158,7 +193,7 @@
     syncState();
   }
   function signedOut(message = '') {
-    generation++; stopPolling();
+    generation++; stopPolling(); closeLive();
     user = null; currentRoom = null; state = 'idle'; afterId = 0; seenMessages.clear();
     $('boot').hidden = true; $('workspace').hidden = true; $('auth-view').hidden = false; $('account-nav').hidden = true;
     document.querySelector('.header-back').hidden = false;
@@ -233,7 +268,7 @@
     event.preventDefault(); const form = event.currentTarget;
     busy(form.querySelector('[type=submit]'), async () => {
       setError('profile-error'); $('profile-success').textContent = '';
-      try { const result = await request('profile', formProfile(form)); user = result.user; renderUser(); $('profile-success').textContent = 'Your preferences have been saved.'; }
+      try { const result = await request('profile', formProfile(form)); user = result.user; renderUser(); $('profile-success').textContent = 'Your preferences have been saved.'; await syncState(); }
       catch (error) { if (isAuthError(error)) signedOut('Your session expired. Please sign in again.'); else setError('profile-error', error.message); }
     });
   });
@@ -272,6 +307,7 @@
   });
 
   function renderIdle() {
+    closeLive();
     state = 'idle'; waitingSince = 0; currentRoom = null; afterId = 0; stopPolling();
     $('empty-room').hidden = false; $('chat-room').hidden = true;
     $('empty-room').classList.remove('is-waiting'); $('room-status').textContent = 'READY WHEN YOU ARE';
@@ -330,6 +366,7 @@
     if (added && (atBottom || ownAdded)) list.scrollTop = list.scrollHeight;
   }
   function renderEnded(message = 'This conversation has come to a close.') {
+    closeLive();
     state = 'ended'; stopPolling(); $('room-status').textContent = 'CONVERSATION COMPLETE'; $('message-form').hidden = true; $('ended-panel').hidden = false;
     $('leave').hidden = true; $('ended-text').textContent = message;
   }
@@ -340,10 +377,11 @@
       $('room-status').textContent = 'A MEETING OF MINDS'; $('message-form').hidden = false; $('ended-panel').hidden = true; $('leave').hidden = false;
     } else if (result.state === 'ended' && result.room) { showRoom(result.room); addMessages(result.messages); renderEnded(); }
     else if (result.state === 'idle' && state !== 'ended') renderIdle();
+    ensureLive();
   }
   function schedulePoll() {
     stopPolling();
-    if (user && !document.hidden && (state === 'waiting' || state === 'matched' || $('global-notice').dataset.connectionError === 'true')) pollTimer = setTimeout(syncState, 4000);
+    if (user && !document.hidden && (state === 'waiting' || state === 'matched' || $('global-notice').dataset.connectionError === 'true')) pollTimer = setTimeout(syncState, realtimeEnabled ? 60000 : 4000);
   }
   async function syncState() {
     if (!user) return;
@@ -408,7 +446,7 @@
         if ($('message-text').value.trim() === text) { $('message-text').value = ''; $('message-text').style.height = ''; $('message-count').textContent = '0 / 2000'; }
         // Sending must not advance the read cursor past unseen partner messages.
         if (result.message) addMessages([result.message], false);
-        await syncState(); $('message-text').focus();
+        if (!realtimeEnabled) await syncState(); $('message-text').focus();
       } catch (error) { if (isAuthError(error)) signedOut('Your session expired. Please sign in again.'); else { setError('chat-error', error.message); if (error.status === 409) await syncState(); } }
     });
   });
