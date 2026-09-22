@@ -70,6 +70,22 @@ test('accounts require adult/consent validation, use hashed passwords and secure
   assert.equal((await f.call('me', { cookie: a.cookie })).data.user, null);
 });
 
+test('minimal registration defers interests until the room and keeps optional consent off', async () => {
+  const f = fixture();
+  const a = await f.call('register', { method: 'POST', data: { username: 'New Person', password, adult: true } });
+  assert.equal(a.status, 201, JSON.stringify(a.data));
+  assert.deepEqual(a.data.user.interests, []);
+  assert.equal(a.data.user.displayName, 'New Person');
+  for (const key of ['learningConsent', 'datasetConsent', 'trainingConsent']) assert.equal(a.data.user[key], false);
+  assert.equal((await f.call('login', { method: 'POST', data: { username: ' NEW  PERSON ', password } })).status, 200);
+  assert.equal((await f.call('connect', { method: 'POST', cookie: a.cookie, data: {} })).status, 400);
+  const profile = await f.call('profile', { method: 'POST', cookie: a.cookie, data: { interests: ['truth'], language: 'English', style: 'explore' } });
+  assert.equal(profile.status, 200, JSON.stringify(profile.data));
+  assert.equal(profile.data.user.datasetConsent, false);
+  const b = await f.register('another');
+  await f.match(a, b);
+});
+
 test('matching, messaging and feedback work; outsiders cannot read or write a room', async () => {
   const f = fixture(); const a = await f.register('alice'); const b = await f.register('bob'); const c = await f.register('charlie');
   const roomId = await f.match(a, b);

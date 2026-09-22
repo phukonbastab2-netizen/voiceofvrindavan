@@ -70,15 +70,17 @@ function checkPassword(password) {
   if (typeof password !== 'string' || password.length < 12 || password.length > 128) fail(400, 'invalid_password', 'Use a password of 12–128 characters.');
 }
 function checkUsername(value) {
-  if (typeof value !== 'string' || !/^[a-zA-Z0-9_]{3,32}$/.test(value)) fail(400, 'invalid_username', 'Use 3–32 letters, numbers or underscores for your username.');
-  return value.toLowerCase();
+  if (typeof value !== 'string') fail(400, 'invalid_username', 'Enter your name.');
+  const name = value.normalize('NFC').trim().replace(/ +/g, ' ');
+  if (name.length < 3 || name.length > 32 || !/^[\p{L}\p{N}_][\p{L}\p{N}_ -]*[\p{L}\p{N}_]$/u.test(name)) fail(400, 'invalid_username', 'Use 3–32 letters, numbers, spaces, hyphens or underscores for your name.');
+  return name.toLowerCase();
 }
-function profileInput(data, existing = null) {
+function profileInput(data, existing = null, allowEmptyInterests = false) {
   const value = (key, column) => data[key] === undefined && existing ? existing[column] : data[key];
   const displayName = String(value('displayName', 'display_name') || '').trim();
   if (displayName.length < 2 || displayName.length > 48 || /[\p{Cc}\p{Cf}<>]/u.test(displayName)) fail(400, 'invalid_name', 'Choose a display name of 2–48 characters.');
   const originalInterests = data.interests ?? (existing && parse(existing.interests, []));
-  if (!Array.isArray(originalInterests) || originalInterests.length < 1 || originalInterests.length > 6 || originalInterests.some(v => !TOPICS.includes(v))) fail(400, 'invalid_interests', 'Choose one to six listed interests.');
+  if (!Array.isArray(originalInterests) || originalInterests.length < (allowEmptyInterests ? 0 : 1) || originalInterests.length > 6 || originalInterests.some(v => !TOPICS.includes(v))) fail(400, 'invalid_interests', 'Choose one to six listed interests.');
   const interests = [...new Set(originalInterests)];
   const language = String(value('language', 'language') || '').trim();
   if (language.length < 2 || language.length > 32 || !/^[\p{L}\p{M} ()-]+$/u.test(language)) fail(400, 'invalid_language', 'Choose a language.');
@@ -345,7 +347,7 @@ async function coreRequest(context) {
       if (path === 'register') {
         await rate(db, `register:${ipKey}`, 5, 3600000, now);
         if (data.adult !== true) fail(400, 'adults_only', 'This community is for adults aged 18 and over.');
-        const profile = profileInput(data);
+        const profile = profileInput({ displayName: String(data.username).trim(), interests: [], language: 'English', style: 'explore', ...data }, null, true);
         const id = crypto.randomUUID(); const recoveryCode = randomHex(24);
         const hash = await passwordHash(data.password, env.AUTH_PEPPER);
         try {
@@ -354,7 +356,7 @@ async function coreRequest(context) {
           id, username, profile.displayName, hash, await keyed(`recovery:${recoveryCode}`, env.AUTH_PEPPER), JSON.stringify(profile.interests),
           profile.language, profile.style, profile.learning, profile.dataset, profile.training, now, now).run();
         } catch (error) {
-          if (String(error.message).includes('UNIQUE')) fail(409, 'username_taken', 'That username is already taken.');
+          if (String(error.message).includes('UNIQUE')) fail(409, 'username_taken', 'That name is already taken. Please choose another.');
           throw error;
         }
         const user = await stmt(db, 'SELECT * FROM users WHERE id=?', id).first();
@@ -399,6 +401,7 @@ async function coreRequest(context) {
       return json({ user: safeUser(await stmt(db, 'SELECT * FROM users WHERE id=?', user.id).first()) });
     }
     if (path === 'connect' && request.method === 'POST') {
+      if (!parse(user.interests, []).length) fail(400, 'interests_required', 'Choose a topic or interest in the room before finding a match.');
       await rate(db, `connect:${user.id}`, 12, 60000, now);
       await maintenance(db, now);
       const active = await stmt(db, 'SELECT room_id FROM active_members WHERE user_id=?', user.id).first();

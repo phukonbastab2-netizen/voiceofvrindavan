@@ -49,7 +49,7 @@
     };
     socket.onerror = () => { /* close/reconciliation handles network failures */ };
   }
-  let autoJoin = false;
+  let enteringRoom = false;
   let user = null;
   let currentRoom = null;
   let state = 'idle';
@@ -119,7 +119,7 @@
   });
   const desiredTopic = new URLSearchParams(location.search).get('topic');
   if (Object.hasOwn(TOPICS, desiredTopic)) {
-    const selected = Array.from($('register-form').querySelectorAll('[name=interests]')).find((input) => input.value === desiredTopic);
+    const selected = Array.from($('room-preferences').querySelectorAll('[name=interests]')).find((input) => input.value === desiredTopic);
     if (selected) selected.checked = true;
   }
 
@@ -130,9 +130,7 @@
     dataset.addEventListener('change', update);
     return update;
   }
-  const refreshRegisterConsent = bindConsent($('register-form'));
   const refreshProfileConsent = bindConsent($('profile-form'));
-  refreshRegisterConsent();
 
   function formProfile(form) {
     const data = new FormData(form);
@@ -171,6 +169,9 @@
   }
   function renderUser() {
     if (!user) return;
+    const choices = $('room-preferences');
+    for (const field of ['language','style']) choices.elements[field].value = user[field];
+    choices.querySelectorAll('[name=interests]').forEach(input => { input.checked = (user.interests || []).includes(input.value) || (!user.interests?.length && input.value === desiredTopic); });
     $('greeting-name').textContent = user.displayName + '.';
     $('profile-name').textContent = user.displayName;
     $('profile-username').textContent = '@' + user.username;
@@ -189,7 +190,7 @@
     $('boot').hidden = true; $('auth-view').hidden = true; $('workspace').hidden = false; $('account-nav').hidden = false;
     document.querySelector('.header-back').hidden = true;
     notice(''); renderUser(); renderIdle();
-    autoJoin = true;
+    enteringRoom = true;
     syncState();
   }
   function signedOut(message = '') {
@@ -219,8 +220,8 @@
     busy(form.querySelector('[type=submit]'), async () => {
       setError('register-error');
       try {
-        const data = new FormData(form); const profile = formProfile(form);
-        const result = await request('register', { ...profile, username: String(data.get('username')).trim(), password: data.get('password'), adult: data.has('adult') });
+        const data = new FormData(form);
+        const result = await request('register', { username: String(data.get('username')).trim(), password: data.get('password'), adult: data.has('adult') });
         authenticated(result.user); recovery(result, result.user.username); form.elements.password.value = '';
       } catch (error) { setError('register-error', error.message); }
     });
@@ -312,13 +313,14 @@
     $('empty-room').hidden = false; $('chat-room').hidden = true;
     $('empty-room').classList.remove('is-waiting'); $('room-status').textContent = 'READY WHEN YOU ARE';
     $('empty-eyebrow').textContent = 'A SHARED INTEREST. A NEW PERSPECTIVE.';
-    $('empty-title').textContent = 'Start a conversation';
-    $('empty-copy').textContent = 'We’ll start with shared interests and the same language. After a minute, we may introduce someone exploring a different philosophy topic.';
+    $('room-preferences').hidden = false;
+    $('empty-title').textContent = 'Who would you like to talk to?';
+    $('empty-copy').textContent = 'Choose your interests, then find a match.';
     $('connect').hidden = false; $('cancel-wait').hidden = true; $('wait-details').hidden = true;
   }
   function renderWaiting() {
     if (state !== 'waiting') waitingSince = Date.now();
-    state = 'waiting'; currentRoom = null;
+    state = 'waiting'; currentRoom = null; $('room-preferences').hidden = true;
     $('empty-room').hidden = false; $('chat-room').hidden = true; $('empty-room').classList.add('is-waiting');
     $('room-status').textContent = 'IN THE WAITING ROOM'; $('empty-eyebrow').textContent = 'GOOD CONVERSATIONS ARE WORTH A MOMENT';
     $('empty-title').textContent = 'Finding your match…';
@@ -391,8 +393,9 @@
     try {
       const result = await request('state?after=' + encodeURIComponent(afterId));
       if (version !== generation || !user) return;
-      applyState(result);
-      if (autoJoin && !$('recovery-dialog').open) { autoJoin = false; if (result.state === 'idle' || result.state === 'ended') { await connect($('connect')); } }
+      if (enteringRoom && (result.state === 'idle' || result.state === 'ended')) renderIdle();
+      else applyState(result);
+      enteringRoom = false;
       if ($('global-notice').dataset.connectionError === 'true') { notice(''); delete $('global-notice').dataset.connectionError; }
     } catch (error) {
       if (version !== generation) return;
@@ -410,12 +413,18 @@
   async function connect(button) {
     await busy(button, async () => {
       setError('connect-error'); setError('chat-error');
-      try { const result = await request('connect', {}); generation++; currentRoom = null; afterId = 0; seenMessages.clear(); applyState(result); await syncState(); }
+      try {
+        const preferences = new FormData($('room-preferences'));
+        const interests = preferences.getAll('interests');
+        if (!interests.length) throw new Error('Choose at least one topic or interest.');
+        const updated = await request('profile', { interests, language: preferences.get('language'), style: preferences.get('style') });
+        user = updated.user; renderUser();
+        const result = await request('connect', {}); generation++; currentRoom = null; afterId = 0; seenMessages.clear(); applyState(result); await syncState(); }
       catch (error) { if (isAuthError(error)) signedOut('Your session expired. Please sign in again.'); else { if (state === 'ended') setError('chat-error', error.message); else setError('connect-error', error.message); } }
     });
   }
-  $('connect').addEventListener('click', () => connect($('connect')));
-  $('connect-again').addEventListener('click', () => connect($('connect-again')));
+  $('room-preferences').addEventListener('submit', event => { event.preventDefault(); connect($('connect')); });
+  $('connect-again').addEventListener('click', () => { renderIdle(); $('room-preferences').scrollIntoView({block:'center'}); });
   $('cancel-wait').addEventListener('click', () => busy($('cancel-wait'), async () => {
     setError('connect-error');
     try { await request('leave', { roomId: currentRoom?.id || null }); generation++; renderIdle(); }
