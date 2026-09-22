@@ -1,4 +1,4 @@
-import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from './philosophers.js';
+import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from './philosophers.js?v=anyone-1';
 import { PORTRAITS } from './portraits/index.js';
 import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
 
@@ -444,9 +444,9 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     try {
       const result = await request('state?after=' + encodeURIComponent(afterId));
       if (version !== generation || !user) return;
-      if (result.state === 'waiting' && (user.interests?.length !== 1 || !Object.hasOwn(PHILOSOPHER_LABELS, user.interests[0]) || !['English','Hindi'].includes(user.language))) {
-        await request('leave', {roomId:null}); renderIdle();
-      } else if (enteringRoom && (result.state === 'idle' || result.state === 'ended')) renderIdle();
+      // The server validates queue eligibility. Never cancel an accepted wait
+      // because this tab has an older cached copy of the choice catalogue.
+      if (enteringRoom && (result.state === 'idle' || result.state === 'ended')) renderIdle();
       else applyState(result);
       enteringRoom = false;
       if ($('global-notice').dataset.connectionError === 'true') { notice(''); delete $('global-notice').dataset.connectionError; }
