@@ -1,5 +1,6 @@
 import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from './philosophers.js';
 import { PORTRAITS } from './portraits/index.js';
+import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
 
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -129,7 +130,11 @@ import { PORTRAITS } from './portraits/index.js';
       const label = document.createElement('label'); label.className = 'interest-option';
       label.dataset.search = searchKey(`${person.name} ${person.aliases}`);
       const input = document.createElement('input'); input.type = 'radio'; input.name = 'interests'; input.value = person.id;
-      const span = document.createElement('span'); span.append(teacherPortrait(person.id), document.createTextNode(person.name));
+      const span = document.createElement('span');
+      const copy = document.createElement('strong'); copy.className = 'teacher-copy';
+      const name = document.createElement('b'); name.textContent = person.name;
+      const description = document.createElement('small'); description.textContent = TEACHER_DESCRIPTIONS[person.id.split(':')[1]];
+      copy.append(name, description); span.append(teacherPortrait(person.id), copy);
       label.append(input, span); options.append(label);
     }
     const filter = () => {
