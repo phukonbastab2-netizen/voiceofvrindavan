@@ -111,10 +111,10 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
   function showDialog(id) { if (!$(id).open) $(id).showModal(); }
   function closeDialog(id) { $(id).close(); }
 
-  function teacherPortrait(id) {
+  function teacherPortrait(id, eager = false) {
     const img = document.createElement('img');
     img.className = 'teacher-portrait'; img.width = 32; img.height = 32;
-    img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+    img.alt = ''; img.loading = eager ? 'eager' : 'lazy'; img.decoding = 'async';
     const source = PORTRAITS[id];
     img.src = source || '/logo/icon.svg';
     img.classList.toggle('logo-portrait', !source);
@@ -134,7 +134,7 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
       const copy = document.createElement('strong'); copy.className = 'teacher-copy';
       const name = document.createElement('b'); name.textContent = person.name;
       const description = document.createElement('small'); description.textContent = TEACHER_DESCRIPTIONS[person.id.split(':')[1]];
-      copy.append(name, description); span.append(teacherPortrait(person.id), copy);
+      copy.append(name, description); span.append(teacherPortrait(person.id, options.children.length < 6), copy);
       label.append(input, span); options.append(label);
     }
     const filter = () => {
@@ -149,7 +149,7 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
       selected.replaceChildren();
       options.querySelectorAll('input:checked').forEach(input => {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'selected-philosopher';
-        button.append(teacherPortrait(input.value), document.createTextNode(`${PHILOSOPHER_LABELS[input.value]} · Remove`));
+        button.append(teacherPortrait(input.value, true), document.createTextNode(`${PHILOSOPHER_LABELS[input.value]} · Remove`));
         button.addEventListener('click', () => { input.checked = false; picker.refreshSelection(); });
         selected.append(button);
       });
@@ -363,8 +363,8 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     $('empty-room').classList.remove('is-waiting'); $('room-status').textContent = 'READY WHEN YOU ARE';
     $('empty-eyebrow').textContent = 'A SHARED INTEREST. A NEW PERSPECTIVE.';
     $('room-preferences').hidden = false;
-    $('empty-title').textContent = 'Who would you like to talk to?';
-    $('empty-copy').textContent = 'Choose one teacher and your language, then find a match.';
+    $('empty-title').textContent = 'Choose your teacher';
+    $('empty-copy').textContent = 'Choose one person below, then English or Hindi.';
     $('connect').hidden = false; $('cancel-wait').hidden = true; $('wait-details').hidden = true;
   }
   function renderWaiting() {
