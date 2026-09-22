@@ -1,4 +1,5 @@
 import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from './philosophers.js';
+import { PORTRAITS } from './portraits/index.js';
 
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -109,6 +110,16 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
   function showDialog(id) { if (!$(id).open) $(id).showModal(); }
   function closeDialog(id) { $(id).close(); }
 
+  function teacherPortrait(id) {
+    const img = document.createElement('img');
+    img.className = 'teacher-portrait'; img.width = 32; img.height = 32;
+    img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+    const source = PORTRAITS[id];
+    img.src = source || '/logo/icon.svg';
+    img.classList.toggle('logo-portrait', !source);
+    img.addEventListener('error', () => { img.src = '/logo/icon.svg'; img.classList.add('logo-portrait'); }, {once:true});
+    return img;
+  }
   document.querySelectorAll('[data-philosopher-picker]').forEach(picker => {
     const search = picker.querySelector('input[type=search]');
     const options = picker.querySelector('.philosopher-options');
@@ -118,7 +129,7 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
       const label = document.createElement('label'); label.className = 'interest-option';
       label.dataset.search = searchKey(`${person.name} ${person.aliases}`);
       const input = document.createElement('input'); input.type = 'radio'; input.name = 'interests'; input.value = person.id;
-      const span = document.createElement('span'); span.textContent = person.name;
+      const span = document.createElement('span'); span.append(teacherPortrait(person.id), document.createTextNode(person.name));
       label.append(input, span); options.append(label);
     }
     const filter = () => {
@@ -133,7 +144,7 @@ import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from '.
       selected.replaceChildren();
       options.querySelectorAll('input:checked').forEach(input => {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'selected-philosopher';
-        button.textContent = `${PHILOSOPHER_LABELS[input.value]} · Remove`;
+        button.append(teacherPortrait(input.value), document.createTextNode(`${PHILOSOPHER_LABELS[input.value]} · Remove`));
         button.addEventListener('click', () => { input.checked = false; picker.refreshSelection(); });
         selected.append(button);
       });
