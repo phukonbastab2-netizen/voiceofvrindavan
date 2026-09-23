@@ -1,3 +1,4 @@
+import { friendsRequest } from '../../../backend/friends.js';
 import { liveRequest, liveEnabled } from '../../../backend/live-api.js';
 import { runMaintenance as maintenance } from '../../../backend/maintenance.js';
 import { PHILOSOPHER_LABELS } from '../../../community/philosophers.js';
@@ -388,6 +389,7 @@ async function coreRequest(context) {
     if (path === 'me' && request.method === 'GET') return json({ user: user ? safeUser(user) : null });
     if (!user) fail(401, 'sign_in_required', 'Please sign in to continue.');
     if (request.method === 'POST') await rate(db, `write:${user.id}`, 90, 60000, now);
+    if (path === 'friends' || path.startsWith('friends/')) return await friendsRequest({ db, user, path, request, url, data, now }, { stmt, rows, fail, json, rate, roomFor, messageView });
     if (path === 'logout' && request.method === 'POST') {
       await db.batch([stmt(db, 'DELETE FROM sessions WHERE token_hash=?', user.session_hash), stmt(db, 'DELETE FROM queue WHERE user_id=?', user.id),
         stmt(db, "UPDATE rooms SET status='ended',ended_at=? WHERE status='active' AND (user_a=? OR user_b=?)", now, user.id, user.id)]);
@@ -477,6 +479,10 @@ async function coreRequest(context) {
       ]);
       return json({ account: safeUser(user), exportedAt: new Date(now).toISOString(), retentionDays: 30,
         accountCreatedAt: new Date(user.created_at).toISOString(), feedback: rows(related[0]), reports: rows(related[1]), blocks: rows(related[2]),
+        friendships: rows(await stmt(db, `SELECT f.status,f.requester=? AS requestedByYou,f.created_at AS createdAt,
+          CASE WHEN f.user_a=? THEN b.display_name ELSE a.display_name END AS displayName
+          FROM friendships f JOIN users a ON a.id=f.user_a JOIN users b ON b.id=f.user_b
+          WHERE f.user_a=? OR f.user_b=? ORDER BY f.updated_at DESC LIMIT 1000`, user.id, user.id, user.id, user.id).all()),
         relatedRecordsLimit: 1000,
         messages: page.map(m => ({ roomId: m.room_id, ...messageView(m, user.id) })),
         nextCursor: messages.length > 1000 ? page.at(-1).id : null }, 200, { 'Content-Disposition': 'attachment; filename="voice-of-vrindavan-data.json"' });

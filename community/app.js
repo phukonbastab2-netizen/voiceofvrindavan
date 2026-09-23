@@ -1,3 +1,4 @@
+import { setupFriends } from './friends.js?v=1';
 import { PHILOSOPHERS, PHILOSOPHER_LABELS, MAX_PHILOSOPHERS, searchKey } from './philosophers.js?v=anyone-1';
 import { PORTRAITS } from './portraits/index.js';
 import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
@@ -376,7 +377,7 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
       currentRoom = room; afterId = 0; seenMessages = new Set();
       $('message-list').replaceChildren(noMessagesNode()); $('feedback-status').textContent = ''; $('feedback-buttons').hidden = false;
       $('feedback-buttons').querySelectorAll('button').forEach((button) => { button.disabled = false; });
-      $('block-open').disabled = false;
+      $('block-open').disabled = false; $('add-friend').textContent = 'Add friend'; $('add-friend').disabled = false;
       $('message-text').value = ''; $('message-text').style.height = ''; $('message-count').textContent = '0 / 2000';
       setError('chat-error');
     } else currentRoom = room;
@@ -532,5 +533,6 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     try { const result = await request('me'); if (result.user) authenticated(result.user); else signedOut(); }
     catch (error) { signedOut(); notice(error.message, true); }
   }
+  setupFriends({ request, getRoom: () => currentRoom, getUser: () => user, tone });
   init();
 })();

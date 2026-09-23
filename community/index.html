@@ -7,14 +7,14 @@
   <meta name="description" content="Meet another curious mind. Thoughtful one-to-one conversations about truth, consciousness, and the meaning of being human.">
   <title>The Conversation Room · Voice of Vrindavan</title>
   <link rel="icon" href="/logo/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/community/style.css">
-  <script type="module" src="/community/app.js?v=settings-privacy-1"></script>
-<link rel="stylesheet" href="/community/gold.css?v=mobile-2"><link rel="canonical" href="https://voiceofvrindavan.com/community/"></head>
+  <script type="module" src="/community/app.js?v=friends-1"></script>
+<link rel="stylesheet" href="/community/gold.css?v=friends-1"><link rel="canonical" href="https://voiceofvrindavan.com/community/"></head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header shell">
     <a class="wordmark" href="/" aria-label="Voice of Vrindavan home"><img class="brand-icon" src="/logo/icon.svg" alt=""><span>VOICE OF<br><b>VRINDAVAN</b></span></a>
     <a class="header-back" href="/">Home</a>
-    <div id="account-nav" class="account-nav" hidden><button id="sound-toggle" class="text-button" aria-pressed="false">Sound on</button><button id="profile-open" class="text-button">Settings</button><button id="logout" class="text-button">Sign out </button></div>
+    <div id="account-nav" class="account-nav" hidden><button id="sound-toggle" class="text-button" aria-pressed="false">Sound on</button><button id="friends-open" class="text-button">Friends</button><button id="profile-open" class="text-button">Settings</button><button id="logout" class="text-button">Sign out </button></div>
   </header>
 
   <main id="main" class="shell">
@@ -65,7 +65,7 @@
             </form><button id="cancel-wait" class="outline-button" hidden>Change choice or language</button><p id="wait-details" class="small-note" hidden>Keep this page open. You’ll be connected when a suitable match joins.</p><p id="connect-error" class="form-error" role="alert"></p>
           </div>
           <section id="chat-room" class="chat-room" hidden aria-label="Private conversation">
-            <div class="partner-bar"><div class="partner-details"><div id="partner-avatar" class="avatar small-avatar" aria-hidden="true"></div><div><h2 id="partner-name"></h2><p id="room-topics"></p></div></div><div class="room-controls"><button id="report-open" class="text-button">Report</button><button id="block-open" class="text-button">Block</button><button id="leave" class="outline-button">Leave</button></div></div>
+            <div class="partner-bar"><div class="partner-details"><div id="partner-avatar" class="avatar small-avatar" aria-hidden="true"></div><div><h2 id="partner-name"></h2><p id="room-topics"></p></div></div><div class="room-controls"><button id="add-friend" class="text-button">Add friend</button><button id="report-open" class="text-button">Report</button><button id="block-open" class="text-button">Block</button><button id="leave" class="outline-button">Leave</button></div></div>
             <div class="conversation-prompt"><div><p class="eyebrow">A PLACE TO BEGIN</p><p id="room-prompt"></p></div></div>
             <div id="message-list" class="message-list" role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions"><p id="no-messages" class="no-messages">Say hello. A good question goes a long way.</p></div>
             <p id="chat-error" class="form-error chat-error" role="alert"></p>
@@ -90,6 +90,7 @@
   <dialog id="block-dialog" aria-labelledby="block-title"><div class="dialog-header"><p class="eyebrow">YOUR BOUNDARIES MATTER</p><button class="dialog-close" data-close="block-dialog" aria-label="Close block confirmation">Close</button></div><h2 id="block-title">Block this person?</h2><p class="section-copy">This ends your conversation and prevents your accounts from being matched again.</p><p id="block-error" class="form-error" role="alert"></p><button id="block-confirm" class="button full">Block and leave</button></dialog>
 
   <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-header"><p class="eyebrow">ACCOUNT SETTINGS</p><button class="dialog-close" data-close="delete-dialog" aria-label="Close delete confirmation">Close</button></div><h2 id="delete-title">Leave this space?</h2><p class="section-copy">Deleting your account ends active conversations and removes your profile. This cannot be undone. The privacy notice explains what happens to previously exported data and safety records.</p><form id="delete-form"><label>Confirm your password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label><p id="delete-error" class="form-error" role="alert"></p><button class="button danger-button full" type="submit">Permanently delete my account</button></form></dialog>
+<dialog id="friends-dialog" aria-labelledby="friends-title"><div class="dialog-header"><button id="friends-back" class="text-button" hidden>Back to friends</button><button id="friends-close" class="dialog-close">Close</button></div><h2 id="friends-title">Friends</h2><div id="friends-list"></div><section id="friend-chat" hidden><div class="friend-chat-tools"><p class="field-hint">Message directly, even when your friend is offline. History is kept for up to 30 days.</p><button id="friend-block" class="text-button">Block</button></div><button id="friend-older" class="text-button" hidden>Earlier messages</button><div id="friend-messages" role="log" aria-live="polite" aria-label="Messages with your friend"></div><p id="friend-empty" class="field-hint">Say hello to your friend.</p><form id="friend-form"><label class="sr-only" for="friend-text">Your message</label><textarea id="friend-text" required maxlength="2000" rows="2" placeholder="Write a message…"></textarea><button id="friend-send" class="send-button" type="submit" aria-label="Send message"><img src="/logo/icon.svg" alt=""></button></form></section><p id="friends-status" class="field-hint" role="status"></p></dialog>
 </body>
 </html>
 

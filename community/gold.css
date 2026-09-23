@@ -11,3 +11,18 @@
 
 .picker-heading{margin:0;font-size:13px;font-weight:500;line-height:1.4;color:var(--gold)}.picker-selection-count{margin:4px 0 8px;font-size:11px;color:var(--muted)}.philosopher-options{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:7px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#a78a4c #15120c;-webkit-overflow-scrolling:touch}.philosopher-options .interest-option{flex-shrink:0;min-width:0}.philosopher-selected:empty{display:none}.teacher-copy small{opacity:1;color:inherit}.teacher-copy{overflow-wrap:anywhere}
 @media(max-width:600px){.shell{width:calc(100% - 20px)}.site-header{height:60px}.brand-icon{height:40px}.account-nav{gap:12px}.account-nav .text-button{min-height:44px}.room-layout{margin:0 0 16px}.room-topbar{padding:9px 12px}#empty-room:not(.is-waiting){min-height:0;padding:14px 10px;justify-content:flex-start}#empty-room:not(.is-waiting) .orbit-art{display:none}#empty-room:not(.is-waiting) h2{font-size:24px;margin:0 0 7px;line-height:1.2}#empty-room:not(.is-waiting)>#empty-copy{font-size:12px;line-height:1.5;margin:0 0 10px;max-width:100%}#room-preferences{width:100%;min-width:0}.philosopher-picker{padding:10px;margin:0 0 12px}.philosopher-search{margin:9px 0;gap:6px}.philosopher-search input{font-size:16px;min-height:44px;width:0}.philosopher-search button{min-height:44px;padding:8px 10px}.philosopher-options{height:264px;max-height:44svh;min-height:190px;padding:2px}.philosopher-options .interest-option>span{min-height:60px;padding:7px;gap:9px;border-radius:10px}.teacher-portrait{width:38px;height:38px;min-width:38px;flex-basis:38px}.teacher-copy b{font-size:13px}.teacher-copy small{font-size:11px;line-height:1.4;margin-top:3px}.philosopher-search-footer{margin-top:7px;min-height:36px}.philosopher-search-footer button{min-height:36px}.philosopher-selected{margin:6px 0}.field-pair{gap:8px}#room-preferences select{font-size:16px;min-height:44px}#profile-dialog{width:calc(100% - 16px);padding:18px 12px}#profile-dialog .philosopher-options{max-height:38svh}.is-waiting{padding:20px 12px}}
+
+/* Friends use the same gold, logo and mobile-first controls as the conversation room. */
+#friends-dialog{width:min(680px,calc(100vw - 24px));max-height:90dvh;overflow-y:auto}
+#friends-dialog .dialog-header{display:flex;justify-content:space-between;gap:12px}
+.friend-row{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px solid #493b22;flex-wrap:wrap}
+.friend-row>img{width:28px;height:45px}.friend-row>div:first-of-type{flex:1;min-width:100px;overflow-wrap:anywhere}
+.friend-row small{display:block;color:#b5a58a;margin-top:4px}.friend-actions{display:flex;gap:8px;flex-wrap:wrap}
+.friend-chat-tools{display:flex;gap:12px;align-items:center}.friend-chat-tools p{flex:1}
+#friend-messages{height:min(45dvh,420px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:12px;padding:12px 2px}
+.friend-message{align-self:flex-start;max-width:90%;border:1px solid #46371f;border-radius:16px;padding:12px;background:#16120d;overflow-wrap:anywhere}
+.friend-message.own{align-self:flex-end;background:#282011}.friend-message p{white-space:pre-wrap;margin:6px 0;line-height:1.5}.friend-message small{font-size:11px;color:#b5a58a}
+.friend-message button{font-size:11px;padding:3px 8px;min-height:30px}
+#friend-form{display:flex;gap:10px;align-items:flex-end;margin-top:12px}#friend-text{flex:1;min-width:0;resize:vertical;max-height:140px}
+.room-controls{flex-wrap:wrap}.account-nav{flex-wrap:wrap}
+@media(max-width:480px){#friends-dialog{padding:18px}.friend-row .friend-actions{width:100%}.room-controls{gap:6px}.room-controls button{font-size:12px}.account-nav{gap:10px}.friend-message{max-width:95%}}
