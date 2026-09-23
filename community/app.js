@@ -171,20 +171,12 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     filter(); picker.refreshSelection();
   });
   function refreshPhilosophers(form) { form.querySelectorAll('[data-philosopher-picker]').forEach(picker => picker.refreshSelection()); }
-  function bindConsent(form) {
-    const dataset = form.elements.datasetConsent;
-    const training = form.elements.trainingConsent;
-    const update = () => { training.disabled = !dataset.checked; if (!dataset.checked) training.checked = false; };
-    dataset.addEventListener('change', update);
-    return update;
-  }
-  const refreshProfileConsent = bindConsent($('profile-form'));
 
   function formProfile(form) {
     const data = new FormData(form);
     const interests = data.getAll('interests');
     if (interests.length !== 1) throw new Error('Choose one name.');
-    return { displayName: String(data.get('displayName') || '').trim(), interests, language: data.get('language'), learningConsent: false, datasetConsent: data.has('datasetConsent'), trainingConsent: data.has('datasetConsent') && data.has('trainingConsent') };
+    return { displayName: String(data.get('displayName') || '').trim(), interests, language: data.get('language'), learningConsent: false };
   }
 
   function authTab(tab) {
@@ -307,10 +299,9 @@ import { TEACHER_DESCRIPTIONS } from './teacher-descriptions.js';
     if (!user || version !== generation) return;
     const form = $('profile-form');
     for (const field of ['displayName', 'language']) form.elements[field].value = field === 'language' && !['English','Hindi'].includes(user[field]) ? 'English' : user[field];
-    for (const field of ['datasetConsent', 'trainingConsent']) form.elements[field].checked = !!user[field];
     form.querySelectorAll('[name=interests]').forEach((checkbox) => { checkbox.checked = user.interests?.length === 1 && user.interests[0] === checkbox.value; });
     refreshPhilosophers(form);
-    refreshProfileConsent(); setError('profile-error'); $('profile-success').textContent = ''; showDialog('profile-dialog');
+    setError('profile-error'); $('profile-success').textContent = ''; showDialog('profile-dialog');
   }
   $('profile-open').addEventListener('click', openProfile); $('sidebar-profile-open').addEventListener('click', openProfile);
   document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => closeDialog(button.dataset.close)));
