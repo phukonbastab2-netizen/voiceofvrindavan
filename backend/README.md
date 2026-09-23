@@ -88,3 +88,16 @@ Each first dataset page runs bounded cleanup: up to 100 expired rooms, 100 stale
 Run `node --test backend/community.test.mjs` using Node 24 or another Node version with `node:sqlite` and WebCrypto. The harness adapts actual SQLite transactions and the production SQL to D1's interface; it exercises real handler requests and cookies. Tests cover accounts and recovery, room access control, concurrent pairing, unique-member atomicity, blocking, reports/moderation, consent snapshots/current consent, redaction, restricted token scope, learning, deletion cascades, rate/origin/body limits and retention.
 
 These tests do not certify a Cloudflare deployment. After deploying, verify health, two independent real browser accounts, matching and bidirectional messaging, recovery, report handling, deletion, an authenticated empty/consented export, and a successful Drive synchronization. Free-tier request/database quotas and actual user load need ongoing observation.
+
+## Friends and direct conversations
+
+Apply `backend/friends.sql` to both preview and production D1 before deploying this version. It only adds tables/indexes; existing accounts and conversations are preserved. Fresh installations use the complete `backend/schema.sql`.
+
+- `GET friends` lists accepted friends and incoming/outgoing requests (up to 200).
+- `POST friends/request {roomId}` requires a retained conversation with that person. Requests are bounded to 20/day; declined or removed connections cannot be requested again for seven days.
+- `POST friends/respond {id,action}` accepts a recipient's pending request, removes a connection, or blocks it (`accept`, `remove`, `block`).
+- `GET friends/messages?id=...&after=...` retrieves new messages; `before` retrieves older pages. Only accepted, unblocked, nonsuspended members can access a thread.
+- `POST friends/send {id,text}` stores a direct message without queueing or reserving random-match slots. Offline recipients receive it when they next open Friends. The shared message rate limit applies.
+- `POST friends/report {id,roomId,reason}` feeds existing moderation without cancelling an unrelated matching queue.
+
+Messages are retained in bounded room segments (up to 400 messages each) through the same 30-day cleanup, consent-gated backup and account-data export paths. Friendship records survive message expiry. Account deletion cascades friendship records. Blocking either direction denies further direct history/message access and revokes exports. No email, push notification or online-status promise is made. Friends polls only while its dialog is open and the page is visible; it checks the open conversation every four seconds and the list every fifteen seconds.
