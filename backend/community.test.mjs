@@ -368,3 +368,34 @@ test('friend history segments, retention, reports, exports, removal and account 
   assert.equal(f.sql.prepare('SELECT count(*) n FROM friendships').get().n,0);
   assert.equal(f.sql.prepare('SELECT count(*) n FROM friend_threads').get().n,0);
 });
+
+test('support AI is consented, bounded, private, deduplicated and excluded from legacy datasets', async()=>{
+ const f=fixture(),a=await f.register('alice',{datasetConsent:true,trainingConsent:true}),b=await f.register('bobby');let calls=0;
+ f.env.AI={async run(model,input){calls++;assert.equal(model,'@cf/meta/llama-3.1-8b-instruct-fp8-fast');assert.equal(input.max_tokens,360);assert.match(input.messages[0].content,/Never diagnose/);return {response:'That sounds difficult. A quiet break may help you feel more settled. How long have you felt stressed?'};}};
+ const post=(path,data,cookie=a.cookie,token)=>f.call(path,{method:'POST',data,cookie,token});
+ assert.equal((await post('support/new',{category:'mental',language:'English'})).status,400);
+ const created=await post('support/new',{category:'mental',language:'English',consent:true});assert.equal(created.status,201);const id=created.data.id;
+ const msg={id,text:'I am stressed about my work.',requestId:crypto.randomUUID()};assert.equal((await post('support/send',msg)).status,200);assert.equal((await post('support/send',msg)).data.duplicate,true);assert.equal(calls,1);
+ const history=await f.call('support/history?id='+id,{cookie:a.cookie});assert.equal(history.data.messages.length,2);assert.equal(history.data.messages[1].role,'ai');
+ assert.equal((await f.call('support/history?id='+id,{cookie:b.cookie})).status,404);assert.equal((await post('support/send',{...msg,requestId:crypto.randomUUID()},b.cookie)).status,404);
+ assert.equal((await f.call('admin/dataset',{token:f.env.DATASET_EXPORT_TOKEN})).data,'');
+ assert.equal((await f.call('admin/support/inbox',{token:f.env.DATASET_EXPORT_TOKEN})).status,401);
+ await post('support/human',{id});
+ assert.equal((await f.call('admin/support/inbox',{token:f.env.ADMIN_TOKEN})).data.threads[0].id,id);
+ await post('support/send',{id,text:'Please help when available.',requestId:crypto.randomUUID()});assert.equal(calls,1);
+ const reply={id,text:'We can listen. What has been hardest today?',requestId:crypto.randomUUID()};assert.equal((await post('admin/support/reply',reply,undefined,f.env.ADMIN_TOKEN)).status,200);
+ assert.equal((await f.call('support/history?id='+id,{cookie:a.cookie})).data.messages.at(-1).role,'team');
+ await post('support/delete',{id});assert.equal((await f.call('support/history?id='+id,{cookie:a.cookie})).status,404);assert.equal(f.sql.prepare('SELECT count(*) n FROM support_messages').get().n,0);
+});
+
+test('support urgent routing and unavailable AI use clear notices and human handoff',async()=>{
+ const f=fixture(),a=await f.register('alice');let calls=0;f.env.AI={async run(){calls++;throw new Error('unavailable');}};
+ const post=(path,data)=>f.call(path,{method:'POST',cookie:a.cookie,data});
+ let id=(await post('support/new',{category:'physical',language:'English',consent:true})).data.id;
+ await post('support/send',{id,text:'I have chest pain and cannot breathe.',requestId:crypto.randomUUID()});assert.equal(calls,0);
+ let h=(await f.call('support/history?id='+id,{cookie:a.cookie})).data;assert.equal(h.thread.urgent,true);assert.equal(h.thread.status,'waiting');assert.match(h.messages[1].text,/112/);assert.equal(h.messages[1].role,'notice');
+ id=(await post('support/new',{category:'mental',language:'Hindi',consent:true})).data.id;
+ await post('support/send',{id,text:'My work is stressful.',requestId:crypto.randomUUID()});h=(await f.call('support/history?id='+id,{cookie:a.cookie})).data;assert.equal(h.thread.status,'waiting');assert.equal(h.messages[1].role,'notice');
+ f.sql.prepare('UPDATE support_messages SET created_at=?').run(Date.now()-31*86400000);assert.equal((await f.call('support/history?id='+id,{cookie:a.cookie})).data.messages.length,0);
+ await post('delete-account',{password});assert.equal(f.sql.prepare('SELECT count(*) n FROM support_threads').get().n,0);
+});

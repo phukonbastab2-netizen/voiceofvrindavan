@@ -1,3 +1,4 @@
+import { supportRoute } from '../../../backend/support.js';
 import { friendsRequest } from '../../../backend/friends.js';
 import { liveRequest, liveEnabled } from '../../../backend/live-api.js';
 import { runMaintenance as maintenance } from '../../../backend/maintenance.js';
@@ -249,6 +250,7 @@ async function adminRoute(request, env, db, path, url, now) {
   const isAdmin = Boolean(env.ADMIN_TOKEN && env.ADMIN_TOKEN.length >= 32 && await equal(bearer, env.ADMIN_TOKEN));
   const isExporter = path === 'admin/dataset' && request.method === 'GET' && env.DATASET_EXPORT_TOKEN?.length >= 32 && await equal(bearer, env.DATASET_EXPORT_TOKEN);
   if (!isAdmin && !isExporter) fail(401, 'unauthorized', 'Administrator authentication is required.');
+  if (path.startsWith('admin/support/')) return await supportRoute({db,env,request,url,path,now,admin:true,data:request.method==='POST'?await body(request):{}}, {stmt,rows,fail,json,rate});
   if (path === 'admin/maintenance' && request.method === 'POST') { await maintenance(db, now); return json({ ok: true }); }
   if (path === 'admin/stats' && request.method === 'GET') {
     const stats = await stmt(db, `SELECT
@@ -389,6 +391,7 @@ async function coreRequest(context) {
     if (path === 'me' && request.method === 'GET') return json({ user: user ? safeUser(user) : null });
     if (!user) fail(401, 'sign_in_required', 'Please sign in to continue.');
     if (request.method === 'POST') await rate(db, `write:${user.id}`, 90, 60000, now);
+    if (path.startsWith('support/')) return await supportRoute({db,env,user,request,url,path,data,now}, {stmt,rows,fail,json,rate});
     if (path === 'friends' || path.startsWith('friends/')) return await friendsRequest({ db, user, path, request, url, data, now }, { stmt, rows, fail, json, rate, roomFor, messageView });
     if (path === 'logout' && request.method === 'POST') {
       await db.batch([stmt(db, 'DELETE FROM sessions WHERE token_hash=?', user.session_hash), stmt(db, 'DELETE FROM queue WHERE user_id=?', user.id),
@@ -505,6 +508,7 @@ async function coreRequest(context) {
 export const testing = { TOPICS, profileInput, scoreCandidate, redact, passwordHash, verifyPassword, maintenance, tryMatch, safeUser };
 
 export async function onRequest(context) {
+  if (new URL(context.request.url).pathname.includes('/support/')) return coreRequest(context);
   try { return await liveRequest(context, coreRequest, { currentUser, stmt, rate }); }
   catch (error) { console.error(JSON.stringify({event:'live_gateway_error',name:error?.name})); return json({error:'The connection is temporarily unavailable.'},503); }
 }
