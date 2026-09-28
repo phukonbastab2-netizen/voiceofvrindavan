@@ -3,3 +3,5 @@
 @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
 
 #send img{filter:brightness(.2)}
+
+.care-title{font-size:44px}

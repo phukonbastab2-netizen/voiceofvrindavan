@@ -101,3 +101,9 @@ Apply `backend/friends.sql` to both preview and production D1 before deploying t
 - `POST friends/report {id,roomId,reason}` feeds existing moderation without cancelling an unrelated matching queue.
 
 Messages are retained in bounded room segments (up to 400 messages each) through the same 30-day cleanup, consent-gated backup and account-data export paths. Friendship records survive message expiry. Account deletion cascades friendship records. Blocking either direction denies further direct history/message access and revokes exports. No email, push notification or online-status promise is made. Friends polls only while its dialog is open and the page is visible; it checks the open conversation every four seconds and the list every fifteen seconds.
+
+## Support MVP (28 September 2026)
+
+The primary product is now an installable support web app at `/app/`, with the owner inbox at `/care/`. Apply `backend/support.sql` to D1 and bind Workers AI as `AI`. Support chats are separate from legacy rooms, friends, datasets and Google Drive exports. Existing account authentication is reused. See `backend/support.js` for bounded inference, access checks, retention, idempotency and human escalation. AI is general information only; no clinical validation is claimed.
+
+The prototype has manual inbox refresh, eight-second visible-chat reconciliation, 20 AI attempts/user/day and 100/deployment/day. It does not include native-store packaging, push/email alerts, verified clinician onboarding, payments, or health-record integrations. Support cleanup is bounded on writes and reads always enforce retention.
