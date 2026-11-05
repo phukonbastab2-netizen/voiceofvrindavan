@@ -1,14 +1,155 @@
 import * as T from './three.module.js';
-const stage=document.querySelector('#stage'),button=document.querySelector('#motion'),preference=matchMedia('(prefers-reduced-motion: reduce)');let paused=preference.matches;
-try{
-const data=await fetch('/logo/shapes.json').then(r=>r.json());const renderer=new T.WebGLRenderer({alpha:true,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;stage.append(renderer.domElement);
-const scene=new T.Scene(),camera=new T.PerspectiveCamera(32,1,.1,100);camera.position.z=13;const group=new T.Group();scene.add(group);
-scene.add(new T.AmbientLight(0xffe1a0,1.6));const light=new T.DirectionalLight(0xffedbd,4.5);light.position.set(-3,4,7);scene.add(light);const rim=new T.DirectionalLight(0xffd080,3);rim.position.set(4,-2,4);scene.add(rim);
-const studio=new T.Scene();studio.background=new T.Color('#726549');for(const x of [-5,5]){const card=new T.Mesh(new T.PlaneGeometry(5,12),new T.MeshBasicMaterial({color:0xfff5db}));card.position.set(x,3,8);card.lookAt(0,0,0);studio.add(card)}const pm=new T.PMREMGenerator(renderer);scene.environment=pm.fromScene(studio,.03).texture;pm.dispose();
-const gold=new T.MeshStandardMaterial({color:0xe5b955,metalness:.84,roughness:.23}),edge=new T.MeshStandardMaterial({color:0xa56b20,metalness:.8,roughness:.3});
-function path(points,Type){return new Type(points.map(([x,y])=>new T.Vector2((x-327.5)/100,(447.5-y)/100)))}
-for(const s of data){if(Math.max(...s.outer.map(p=>p[0]))>480)continue;const shape=path(s.outer,T.Shape);shape.holes=s.holes.map(p=>path(p,T.Path));group.add(new T.Mesh(new T.ExtrudeGeometry(shape,{depth:.12,bevelEnabled:true,bevelThickness:.02,bevelSize:.01,bevelSegments:3,steps:1}),[gold,edge]));}
-function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.position.z=Math.max(12,3.2/(Math.tan(16*Math.PI/180)*camera.aspect));camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(stage);resize();
-let time=0,last=performance.now(),dirty=true;function label(){button.textContent=paused?'Play ↔':'Pause ↔';button.setAttribute('aria-label',paused?'Play animation':'Pause animation');button.setAttribute('aria-pressed',String(paused))}label();button.onclick=()=>{paused=!paused;dirty=true;label()};preference.onchange=()=>{paused=preference.matches;dirty=true;label()};document.addEventListener('visibilitychange',()=>{last=performance.now();dirty=true});
-function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.05);last=now;if(document.hidden||paused&&!dirty)return;if(!paused)time+=dt;group.rotation.y=Math.sin(time*.32)*.20;group.rotation.x=Math.cos(time*.27)*.025;group.position.y=Math.sin(time*.6)*.08;light.position.x=Math.sin(time*.32)*5;renderer.render(scene,camera);document.querySelector('#fallback').hidden=true;dirty=false;}requestAnimationFrame(frame);
-}catch(e){button.hidden=true;console.warn('Static emblem fallback active');}
+
+const stage = document.querySelector('#stage');
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = motionPreference.matches;
+let renderer;
+let stopped = false;
+let animation;
+
+function fallback() {
+  stopped = true;
+  cancelAnimationFrame(animation);
+  document.body.classList.remove('ready');
+  window.__logoReady = false;
+}
+
+try {
+  const response = await fetch('/logo/shapes.json');
+  if (!response.ok) throw new Error('Logo unavailable');
+  const shapes = await response.json();
+  renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  renderer.domElement.setAttribute('aria-hidden', 'true');
+  renderer.domElement.addEventListener('webglcontextlost', fallback);
+  stage.append(renderer.domElement);
+
+  const scene = new T.Scene();
+  const camera = new T.PerspectiveCamera(34, 1, .1, 150);
+  const logo = new T.Group();
+  const emblem = new T.Group();
+  const wordmark = new T.Group();
+  logo.add(emblem, wordmark);
+  scene.add(logo);
+
+  // Broad light cards bring out the bevels in the original gold artwork.
+  const studio = new T.Scene();
+  studio.background = new T.Color('#807d70');
+  for (const [x, y, z, w, h, power] of [
+    [-3, 3, 10, 8, 8, 1.8], [-8, 8, 7, 8, 14, 4],
+    [9, 2, 5, 4, 13, 3], [0, -8, 3, 18, 2, 2]
+  ]) {
+    const card = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({
+      color: new T.Color(power, power * .97, power * .9), side: T.DoubleSide
+    }));
+    card.position.set(x, y, z);
+    card.lookAt(0, 0, 0);
+    studio.add(card);
+  }
+  const pm = new T.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(studio, .035).texture;
+  pm.dispose();
+  studio.traverse(object => {
+    if (object.isMesh) { object.geometry.dispose(); object.material.dispose(); }
+  });
+  scene.add(new T.AmbientLight(0xfff0d2, 1));
+  const light = new T.DirectionalLight(0xfff4df, 3.2);
+  light.position.set(-3, 4, 8);
+  scene.add(light);
+  const rim = new T.DirectionalLight(0xffffff, 2.4);
+  rim.position.set(6, -2, 3);
+  scene.add(rim);
+  const gold = new T.MeshStandardMaterial({ color: 0xe2b24f, metalness: .82, roughness: .22, envMapIntensity: 1.35 });
+  const edge = new T.MeshStandardMaterial({ color: 0xb88638, metalness: .8, roughness: .25, envMapIntensity: 1.45 });
+  const path = (points, Type) => new Type(points.map(([x, y]) => new T.Vector2(x / 100, -y / 100)));
+
+  for (const item of shapes) {
+    const shape = path(item.outer, T.Shape);
+    shape.holes = item.holes.map(points => path(points, T.Path));
+    const geometry = new T.ExtrudeGeometry(shape, {
+      depth: .085, bevelEnabled: true, bevelThickness: .016,
+      bevelSize: .0065, bevelSegments: 4, steps: 1, curveSegments: 12
+    });
+    const mesh = new T.Mesh(geometry, [gold, edge]);
+    (Math.max(...item.outer.map(point => point[0])) < 480 ? emblem : wordmark).add(mesh);
+  }
+  const center = new T.Vector3();
+  const bounds = new T.Box3();
+  for (const group of [emblem, wordmark]) {
+    bounds.setFromObject(group).getCenter(center);
+    for (const mesh of group.children) mesh.geometry.translate(-center.x, -center.y, -center.z);
+    group.userData.originalCenter = center.clone();
+  }
+
+  function resize() {
+    const width = stage.clientWidth, height = stage.clientHeight;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    logo.rotation.set(0, 0, 0);
+    logo.position.set(0, 0, 0);
+    for (const group of [emblem, wordmark]) {
+      group.scale.setScalar(1);
+      group.position.copy(group.userData.originalCenter);
+    }
+    if (width < 700 && height > width) {
+      emblem.scale.setScalar(.85);
+      emblem.position.set(0, .55, 0);
+      wordmark.scale.setScalar(.43);
+      wordmark.position.set(0, -2.65, 0);
+    }
+    bounds.setFromObject(logo).getCenter(center);
+    emblem.position.sub(center);
+    wordmark.position.sub(center);
+    const size = bounds.getSize(new T.Vector3());
+    camera.position.set(0, 0, Math.max(size.y / 2, size.x / (2 * camera.aspect)) * 1.3 / Math.tan(17 * Math.PI / 180) + 1);
+    camera.updateProjectionMatrix();
+    draw();
+  }
+
+  let time = reduced ? 4 : 0;
+  let last = performance.now();
+  let pointerX = 0, pointerY = 0;
+  function draw() {
+    const reveal = reduced ? 1 : 1 - Math.pow(1 - Math.min(time / 3.4, 1), 3);
+    logo.rotation.y = (1 - reveal) * -.55 + (reduced ? 0 : Math.sin(time * .23) * .045 + pointerX);
+    logo.rotation.x = reduced ? 0 : (1 - reveal) * .06 + pointerY;
+    logo.position.y = reduced ? 0 : Math.sin(time * .4) * .035;
+    light.position.x = reduced ? -3 : -5 + Math.sin(time * .38) * 9;
+    renderer.render(scene, camera);
+    document.body.classList.add('ready');
+    window.__logoReady = true;
+  }
+  function frame(now) {
+    if (stopped || document.hidden) return;
+    time += Math.min((now - last) / 1000, .05);
+    last = now;
+    draw();
+    if (!reduced) animation = requestAnimationFrame(frame);
+  }
+  function resume() {
+    cancelAnimationFrame(animation);
+    if (stopped || document.hidden) return;
+    last = performance.now();
+    draw();
+    if (!reduced) animation = requestAnimationFrame(frame);
+  }
+  new ResizeObserver(resize).observe(stage);
+  resize();
+  addEventListener('pointermove', event => {
+    if (reduced || event.pointerType === 'touch') return;
+    pointerX = (event.clientX / innerWidth - .5) * .08;
+    pointerY = (event.clientY / innerHeight - .5) * .04;
+  });
+  document.addEventListener('visibilitychange', resume);
+  motionPreference.addEventListener('change', event => {
+    reduced = event.matches;
+    if (reduced) { time = 4; pointerX = pointerY = 0; }
+    resume();
+  });
+  resume();
+} catch {
+  fallback();
+  renderer?.dispose();
+}
