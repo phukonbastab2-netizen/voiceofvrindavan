@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#172924">
+  <meta name="description" content="An evening of music and devotion. Enter the Voice of Vrindavan 3D kirtan courtyard.">
+  <title>Raas &amp; Kirtan · Voice of Vrindavan</title>
+  <link rel="icon" href="/logo/icon.svg">
+  <link rel="stylesheet" href="/kirtan/style.css">
+  <script type="module" src="/kirtan/app.js"></script>
+</head>
+<body>
+  <main id="world" aria-label="Interactive 3D Vrindavan festival stage"></main>
+  <div class="shade" aria-hidden="true"></div>
+  <header>
+    <a class="brand" href="/" aria-label="Voice of Vrindavan home"><img src="/logo/original.png" alt="Voice of Vrindavan"></a>
+    <span class="edition">RAAS &amp; KIRTAN <i></i> A GATHERING IN BRAJ</span>
+    <button class="quiet" id="focus" aria-pressed="false">Immerse <span aria-hidden="true">↗</span></button>
+  </header>
+  <section class="invitation" aria-labelledby="title">
+    <p class="eyebrow">IN THE RHYTHM OF VRINDAVAN</p>
+    <h1 id="title">Let devotion<br><em>take the floor.</em></h1>
+    <p class="intro">Press play. A celebration comes alive.</p>
+  </section>
+  <div id="loading" role="status"><img src="/logo/icon.svg" alt=""><span>Opening the courtyard…</span></div>
+  <section class="player" aria-label="Kirtan music player">
+    <div class="track-row">
+      <div class="track-meta"><span class="eyebrow" id="track-category">EVENING BHAJAN</span><h2 id="track-title">Radhe · A quiet offering</h2><span id="track-description">Flute, tanpura &amp; gentle claps</span></div>
+      <button id="play" class="play" disabled aria-label="Play kirtan" aria-pressed="false"><span class="play-symbol" aria-hidden="true"></span></button>
+    </div>
+    <div class="meter-row"><div class="spectrum" aria-hidden="true"></div><span id="activity" role="status">The courtyard is waiting</span><label class="volume">Volume<input type="range" id="volume" min="0" max="100" value="55" aria-label="Music volume"></label></div>
+    <div class="tracks" role="group" aria-label="Choose an instrumental kirtan">
+      <button class="track selected" data-track="0" aria-pressed="true"><span>01</span> Radhe <small>GENTLE</small></button>
+      <button class="track" data-track="1" aria-pressed="false"><span>02</span> Hare Krishna <small>KIRTAN</small></button>
+      <button class="track" data-track="2" aria-pressed="false"><span>03</span> Radha Govind <small>CELEBRATE</small></button>
+    </div>
+  </section>
+  <footer><span>Original instrumental demos · No vocals</span><span class="orbit-hint">Drag to look around <b>·</b> Scroll to move closer</span><button class="quiet" id="motion" aria-pressed="false">Reduce motion</button></footer>
+  <p class="error" id="error" role="alert" hidden></p>
+  <noscript><p class="no-script">Enable JavaScript to enter the 3D kirtan courtyard.</p></noscript>
+</body>
+</html>

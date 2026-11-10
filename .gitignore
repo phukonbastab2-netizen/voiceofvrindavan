@@ -2,3 +2,15 @@
 node_modules/
 .wrangler/
 *.log
+kirtan/source-textures/
+kirtan/models/*.fbx
+kirtan/motion/
+kirtan/textures/f202_*.webp
+kirtan/textures/m204_*.webp
+kirtan/textures/f003_*.webp
+kirtan/textures/m002_*.webp
+kirtan/vendor/FBXLoader.js
+kirtan/vendor/GLTFExporter.js
+kirtan/vendor/fflate.module.js
+kirtan/vendor/NURBSCurve.js
+kirtan/vendor/NURBSUtils.js

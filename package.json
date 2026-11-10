@@ -1,0 +1,7 @@
+{
+  "name": "voice-of-vrindavan-kirtan",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": { "start": "node tools/dev-server.cjs" },
+  "description": "GitHub-first 3D kirtan courtyard prototype; no build or API keys required"
+}
